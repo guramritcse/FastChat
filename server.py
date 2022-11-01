@@ -3,6 +3,7 @@ import socket
 import select
 import sys
 import psycopg2
+
 '''Replace "thread" with "_thread" for python 3'''
 from _thread import *
 
@@ -60,7 +61,6 @@ dbconn.commit()
 def clientthread(conn, addr):
 
     # sends a message to the client whose user object is conn
-    conn.send(b"Welcome to this chatroom!")
     success = False
     while not success:
         inp = conn.recv(512)
@@ -70,22 +70,26 @@ def clientthread(conn, addr):
             return
 
         inp = inp.split(":")
-        to_check = f"SELECT USERNAME, PASSWORD FROM CREDENTIALS WHERE USERNAME = {inp[1]} "
-        selected_entry = cur.execute(to_check).fetchall()
-
-        if (len(selected_entry) == 0):
+        to_check =f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{inp[1]}' "
+        cur.execute(to_check)
+        selected_entry=cur.fetchone()
+        
+        if selected_entry==None:
             if (inp[0] == "1"):
                 conn.send(bytes("n", 'utf-8'))
             else:
-                to_insert = "INSERT INTO CREDENTIALS VALUES (?,?,?) "
-                cur.execute(to_insert, (inp[1], inp[2], "true"))
+                postgres_insert_query = f'''INSERT INTO CREDENTIALS (USERNAME, PASSWORD, ONLINE) VALUES ('{inp[1]}', '{inp[2]}', 'true')'''
+                cur.execute(postgres_insert_query)
+                dbconn.commit()
                 conn.send(bytes("y", 'utf-8'))
                 success = True
+                to_check = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{inp[1]}' "
+                cur.execute(to_check)
         else:
             if (inp[0] == "2"):
                 conn.send(bytes("n", 'utf-8'))
             else:
-                if (inp[2] == selected_entry[0][1]):
+                if (inp[2] == selected_entry[0]):
                     conn.send(bytes("y", 'utf-8'))
                     success = True
                 else:
@@ -104,9 +108,7 @@ def clientthread(conn, addr):
                 # Calls broadcast function to send message to all
                 message_to_send = "<" + addr[0] + \
                     "> " + message.decode('utf-8')
-                print('here')
                 broadcast(message_to_send, conn)
-                print('m out')
 
             else:
                 """message may have no content if the connection
@@ -123,10 +125,8 @@ the message """
 
 
 def broadcast(message, connection):
-    print('entered server 123')
     for clients in list_of_clients:
         if clients != connection:
-            print('entered server')
             try:
                 clients.send(bytes(message, 'utf-8'))
             except:

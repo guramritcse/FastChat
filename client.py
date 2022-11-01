@@ -15,10 +15,10 @@ server.connect((IP_address, Port))
 
 success = False
 while not success:
-    x = int(input("1. Login\n2. Sign Up\n3. Quit\n"))
+    x = int(input("1. Login\n2. Sign Up\n3. Quit\n\n"))
     if x == 1:
-        usr = input("Enter user name")
-        pwd = input("Enter your password")
+        usr = input("Enter user name: ")
+        pwd = input("Enter your password: ")
         to_send = "{}:{}:{}".format(1, usr, pwd).encode('utf-8')
         if (len(to_send) > 512):
             print("Exceeded maximum length \nRetry\n")
@@ -29,22 +29,25 @@ while not success:
         confirm = confirm.decode('utf-8')
         if (confirm == "y"):
             success = True
+            print('Successfully logged in\n')
         else:
             print("Invalid username or password\n")
 
     elif x == 2:
-        usr = input("Enter user name")
-        pwd = input("Enter your password")
+        usr = input("Enter user name: ")
+        pwd = input("Enter your password: ")
         to_send = "{}:{}:{}".format(2, usr, pwd).encode('utf-8')
         if (len(to_send) > 512):
             print("Exceeded maximum length \nRetry\n")
             continue
-
+		
         server.sendall(to_send)
         confirm = server.recv(1)
         confirm = confirm.decode('utf-8')
+        print(confirm)
         if (confirm == "y"):
             success = True
+            print('Successfully signed up\n')
         else:
             print("Username already taken\n")
 
