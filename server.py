@@ -70,7 +70,7 @@ def clientthread(conn, addr):
             return
 
         inp = inp.split(":")
-        to_check = f"SELECT USERNAME, PASSWORD FROM CREDENTIALS WHERE USERNAME = {inp[1]} "
+        to_check = f"SELECT USERNAME, PASSWORD FROM CREDENTIALS WHERE USERNAME = '{inp[1]}' "
         selected_entry = cur.execute(to_check).fetchall()
 
         if (len(selected_entry) == 0):
