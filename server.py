@@ -40,7 +40,7 @@ increased as per convenience.
 server.listen(100)
 
 list_of_clients = []
-
+username_conn = {}
 
 dbconn = psycopg2.connect(database="fastchat", user="postgres",
                           password="", host="127.0.0.1", port="5432")
@@ -52,14 +52,27 @@ cur.execute('''CREATE TABLE IF NOT EXISTS GROUPS
 
 cur.execute('''CREATE TABLE IF NOT EXISTS CREDENTIALS
       (USERNAME VARCHAR(50) PRIMARY KEY NOT NULL,
-	  PASSWORD VARCHAR(50) NOT NULL,
-	  ONLINE BOOLEAN NOT NULL);''')
+	  PASSWORD VARCHAR(50) NOT NULL);''')
+
+cur.execute('''CREATE TABLE IF NOT EXISTS ONLINE
+      (USERNAME VARCHAR(50) PRIMARY KEY NOT NULL,
+	  PORT TEXT NOT NULL);''')
+
+cur.execute('''CREATE TABLE IF NOT EXISTS INDVMSSGS
+      (SENDER VARCHAR(50) NOT NULL,
+	  RECV VARCHAR(50) NOT NULL,
+	  MESSAGE TEXT NOT NULL);''')
+
+cur.execute('''CREATE TABLE IF NOT EXISTS GRPMSSGS
+      (GRPNAME VARCHAR(50) NOT NULL,
+	  SENDER VARCHAR(50) NOT NULL,
+	  MESSAGE TEXT NOT NULL);''')
 
 dbconn.commit()
 
 
 def clientthread(conn, addr):
-
+    username = 0
     # sends a message to the client whose user object is conn
     success = False
     while not success:
@@ -68,17 +81,17 @@ def clientthread(conn, addr):
         if (inp == "quit"):
             remove(conn)
             return
-
         inp = inp.split(":")
-        to_check =f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{inp[1]}' "
+        username = inp[1]
+        to_check = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{inp[1]}' "
         cur.execute(to_check)
-        selected_entry=cur.fetchone()
-        
-        if selected_entry==None:
+        selected_entry = cur.fetchone()
+
+        if selected_entry == None:
             if (inp[0] == "1"):
                 conn.send(bytes("n", 'utf-8'))
             else:
-                postgres_insert_query = f'''INSERT INTO CREDENTIALS (USERNAME, PASSWORD, ONLINE) VALUES ('{inp[1]}', '{inp[2]}', 'true')'''
+                postgres_insert_query = f'''INSERT INTO CREDENTIALS (USERNAME, PASSWORD) VALUES ('{inp[1]}', '{inp[2]}')'''
                 cur.execute(postgres_insert_query)
                 dbconn.commit()
                 conn.send(bytes("y", 'utf-8'))
@@ -95,11 +108,60 @@ def clientthread(conn, addr):
                 else:
                     conn.send(bytes("n", 'utf-8'))
 
+    username_conn[username] = conn
     while True:
         try:
-            message = conn.recv(2048)
-            if message:
+            message = conn.recv(512).decode('utf-8')
+            message = message.decode('utf-8')
+            if (message == "quit"):
+                to_send="quit".encode('utf-8')
+                username_conn[username].send(to_send)
+                remove(conn)
+                return
+            message = message.split(":")
+            code = message[0]
+            username = message[1]
+            # print(message)
+            if code == "cg":
+                to_usr = conn.recv(512).decode('utf-8')
+                to_msg = conn.recv(512)
+                print(to_usr)
 
+                find_usr = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{to_usr}' "
+                cur.execute(find_usr)
+                entry = cur.fetchone()
+                if entry == None:
+                    # Send client that user does not exist
+                    a = "user does not exist"
+                    conn.sendall(a.encode('utf-8'))
+                    pass
+                else:
+                    if to_usr in username_conn.keys():
+                        # Recieving user is active
+                        username_conn[to_usr].send(to_msg)
+                    else:
+                        postgres_insert_query = f'''INSERT INTO INDVMSSGS (SENDER, RECV, MESSAGE) VALUES ('{username}', '{to_usr}', '{to_msg.decode('utf-8')}')'''
+                        cur.execute(postgres_insert_query)
+                        dbconn.commit()
+            elif code == "ci":
+                pass
+            elif code == "ng":
+                pass
+            elif code == "eg":
+                pass
+            elif code == "ai":
+                pass
+            elif code == "ri":
+                pass
+            elif code == "fa":
+                pass
+            elif code == "wi":
+                pass
+            elif code == "wi":
+                pass
+
+
+            if message:
                 """prints the message and address of the
                 user who just sent the message on the server
                 terminal"""
