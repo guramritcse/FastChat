@@ -113,16 +113,68 @@ def clientthread(conn, addr):
         try:
             message = conn.recv(512).decode('utf-8')
             message = message.decode('utf-8')
-            if (message == "quit"):
+            if(message == "quit"):
                 to_send="quit".encode('utf-8')
                 username_conn[username].send(to_send)
                 remove(conn)
                 return
             message = message.split(":")
             code = message[0]
-            username = message[1]
             # print(message)
             if code == "cg":
+                grp_name = message[1]
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' "
+                cur.execute(find_grp)
+                entry = cur.fetchone()
+                if entry == None:
+                    out = "n".encode('utf-8')
+                    conn.sendall(out)
+                else:
+                    out = "y".encode('utf-8')
+                    conn.sendall(out)
+            elif code == "ci":
+                ind_name = message[1]
+                find_ind = f"SELECT * FROM CREDENTIALS WHERE NAME = '{ind_name}' "
+                cur.execute(find_ind)
+                entry = cur.fetchone()
+                if entry == None:
+                    out = "n".encode('utf-8')
+                    conn.sendall(out)
+                else:
+                    out = "y".encode('utf-8')
+                    conn.sendall(out)
+            elif code == "ng":
+                grp_name = message[1]
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                cur.execute(find_grp)
+                entry = cur.fetchone()
+                if entry == None:
+                    postgres_insert_query = f'''INSERT INTO GROUPS (NAME, ADMIN) VALUES ('{grp_name}', '{username}')'''
+                    cur.execute(postgres_insert_query)
+                    dbconn.commit()
+                    out = "y".encode('utf-8')
+                    conn.sendall(out)
+                else:
+                    out = "n".encode('utf-8')
+                    conn.sendall(out)
+            elif code == "eg":
+                grp_name = message[1]
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                cur.execute(find_grp)
+                entry = cur.fetchone()
+                if entry == None:
+                    out = "n".encode('utf-8')
+                    conn.sendall(out)
+                else:
+                    out = "y".encode('utf-8')
+                    conn.sendall(out)
+            elif code == "ai":
+                pass
+            elif code == "ri":
+                pass
+            elif code == "fa":
+                pass
+            elif code == "wg":
                 to_usr = conn.recv(512).decode('utf-8')
                 to_msg = conn.recv(512)
                 print(to_usr)
@@ -143,22 +195,28 @@ def clientthread(conn, addr):
                         postgres_insert_query = f'''INSERT INTO INDVMSSGS (SENDER, RECV, MESSAGE) VALUES ('{username}', '{to_usr}', '{to_msg.decode('utf-8')}')'''
                         cur.execute(postgres_insert_query)
                         dbconn.commit()
-            elif code == "ci":
-                pass
-            elif code == "ng":
-                pass
-            elif code == "eg":
-                pass
-            elif code == "ai":
-                pass
-            elif code == "ri":
-                pass
-            elif code == "fa":
-                pass
+
             elif code == "wi":
-                pass
-            elif code == "wi":
-                pass
+                to_usr = conn.recv(512).decode('utf-8')
+                to_msg = conn.recv(512)
+                print(to_usr)
+
+                find_usr = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{to_usr}' "
+                cur.execute(find_usr)
+                entry = cur.fetchone()
+                if entry == None:
+                    # Send client that user does not exist
+                    a = "user does not exist"
+                    conn.sendall(a.encode('utf-8'))
+                    pass
+                else:
+                    if to_usr in username_conn.keys():
+                        # Recieving user is active
+                        username_conn[to_usr].send(to_msg)
+                    else:
+                        postgres_insert_query = f'''INSERT INTO INDVMSSGS (SENDER, RECV, MESSAGE) VALUES ('{username}', '{to_usr}', '{to_msg.decode('utf-8')}')'''
+                        cur.execute(postgres_insert_query)
+                        dbconn.commit()
 
 
             if message:

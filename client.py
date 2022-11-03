@@ -37,7 +37,6 @@ Port = int(sys.argv[2])
 server.connect((IP_address, Port))
 
 
-usr = ""
 group = ""
 user = ""
 confirm = ""
@@ -50,7 +49,7 @@ def user_interface(display_menu=0):
                 display_menu=1
             elif choice=='b':
                 grp_name=input(inp_option[4])
-                to_send = "{}:{}:{}".format("cg", usr, grp_name).encode('utf-8')
+                to_send = "{}:{}".format("cg", grp_name).encode('utf-8')
                 if(len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
@@ -63,7 +62,7 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}No group found\n")
             elif choice=='d':
                 ind_name=input(inp_option[5])
-                to_send = "{}:{}:{}".format("ci", usr, ind_name).encode('utf-8')
+                to_send = "{}:{}".format("ci", ind_name).encode('utf-8')
                 if(len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
@@ -84,7 +83,7 @@ def user_interface(display_menu=0):
         elif display_menu==1:
             if choice=='n':
                 grp_name=input(inp_option[3])
-                to_send = "{}:{}:{}".format("ng", usr, grp_name).encode('utf-8')
+                to_send = "{}:{}".format("ng", grp_name).encode('utf-8')
                 if(len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
@@ -97,7 +96,7 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Group already exists\n")
             elif choice=='m':
                 grp_name=input(inp_option[0])
-                to_send = "{}:{}:{}".format("eg", usr, grp_name).encode('utf-8')
+                to_send = "{}:{}".format("eg", grp_name).encode('utf-8')
                 if(len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
@@ -106,9 +105,9 @@ def user_interface(display_menu=0):
                 # confirm = confirm.decode('utf-8')
                 if(confirm == "y"):
                     group = grp_name
+                    display_menu=2
                 else:
                     print(f"{Fore.RED}No group found\n")
-                    display_menu=2
             elif choice=='q':
                 display_menu=0
             else:
@@ -116,7 +115,7 @@ def user_interface(display_menu=0):
         elif display_menu==2:
             if choice=='a':
                 ind_name=input(inp_option[1])
-                to_send = "{}:{}:{}:{}".format("ai", usr, group, ind_name).encode('utf-8')
+                to_send = "{}:{}:{}".format("ai", group, ind_name).encode('utf-8')
                 if(len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
@@ -129,7 +128,7 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}No user found\n")
             elif choice=='r':
                 ind_name=input(inp_option[1])
-                to_send = "{}:{}:{}:{}".format("ri", usr, group, ind_name).encode('utf-8')
+                to_send = "{}:{}:{}".format("ri", group, ind_name).encode('utf-8')
                 if(len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
@@ -141,7 +140,7 @@ def user_interface(display_menu=0):
                 else:
                     print(f"{Fore.RED}No user found in group\n")
             elif choice=='s':
-                to_send = "{}:{}:{}".format("fa", usr, group).encode('utf-8')
+                to_send = "{}:{}".format("fa", group).encode('utf-8')
                 server.sendall(to_send)
             elif choice=='q':
                 display_menu=1
@@ -150,7 +149,7 @@ def user_interface(display_menu=0):
         elif display_menu==3:
             if choice=='t':
                 msg=input()
-                to_send = "{}:{}:{}:{}".format("wg", usr, group, msg).encode('utf-8')
+                to_send = "{}:{}:{}".format("wg", group, msg).encode('utf-8')
                 if(len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
@@ -168,7 +167,7 @@ def user_interface(display_menu=0):
         elif display_menu==4:
             if choice=='t':
                 msg=input()
-                to_send = "{}:{}:{}:{}".format("wi", usr, user, msg).encode('utf-8')
+                to_send = "{}:{}:{}".format("wi", user, msg).encode('utf-8')
                 if(len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
@@ -204,10 +203,10 @@ def receiving_func():
                 print(Fore.YELLOW+member)
 
 
-
+usr = ""
 success = False
 while not success:
-    x = int(input(f"{Fore.MAGENTA}1. Login\n2. Sign Up\n3. Quit\n"))
+    x = int(input(f"{Fore.MAGENTA}1. Login\n2. Sign Up\n3. Quit\n{Fore.YELLOW}"))
     if x == 1:
         usr = input(f"{Fore.CYAN}Enter user name: ")
         pwd = input(f"{Fore.CYAN}Enter your password: ")
