@@ -1,4 +1,5 @@
 # Python program to implement client side of chat room.
+import imp
 from operator import truediv
 import colorama
 from colorama import Fore
@@ -6,16 +7,16 @@ import socket
 import select
 import sys
 import threading
+from time import sleep
 
 from _thread import *
 
 menu_option=[]
 menu_option.append(f"{Fore.GREEN}***** Main Menu *****\n{Fore.CYAN}Press {Fore.RED}'g' {Fore.CYAN}for managing groups\nPress {Fore.RED}'b' {Fore.CYAN}to send group message\nPress {Fore.RED}'d' {Fore.CYAN}to send direct message\nPress {Fore.RED}'l' {Fore.CYAN}to logout\n{Fore.RED}")
-menu_option.append(f"{Fore.GREEN}***** Group Settings *****\nPress 'n' {Fore.CYAN}to create a new group\nPress 'm' {Fore.CYAN}to manage an existing group\nPress 'q' {Fore.CYAN}to go to previous menu\n")
-menu_option.append(f"{Fore.GREEN}***** Manage Existing Group *****\n{Fore.CYAN}Press 'a' {Fore.CYAN}to add a new member\nPress {Fore.RED}'r' {Fore.CYAN}to remove a member\nPress {Fore.RED}'s' {Fore.CYAN}to see all members in the group\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n{Fore.RED}")
-menu_option.append(f"{Fore.GREEN}***** Group message *****\n{Fore.CYAN}Press 't' {Fore.CYAN}to type a message\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n{Fore.RED}")
-menu_option.append(f"{Fore.GREEN}***** Direct message *****\n{Fore.CYAN}Press 't' {Fore.CYAN}to type a message\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n{Fore.RED}")
-# menu_option.append(f"{Fore.CYAN}Press {Fore.RED}'t' {Fore.CYAN}to type another message\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n{Fore.RED}")
+menu_option.append(f"{Fore.GREEN}***** Group Settings *****\n{Fore.CYAN}Press {Fore.RED}'n' {Fore.CYAN}to create a new group\nPress {Fore.RED}'m' {Fore.CYAN}to manage an existing group\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n{Fore.RED}")
+menu_option.append(f"{Fore.GREEN}***** Manage Existing Group *****\n{Fore.CYAN}Press {Fore.RED}'a' {Fore.CYAN}to add a new member\nPress {Fore.RED}'r' {Fore.CYAN}to remove a member\nPress {Fore.RED}'s' {Fore.CYAN}to see all members in the group\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n{Fore.RED}")
+menu_option.append(f"{Fore.GREEN}***** Group message *****\n{Fore.CYAN}Press {Fore.RED}'t' {Fore.CYAN}to type a message\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n{Fore.RED}")
+menu_option.append(f"{Fore.GREEN}***** Direct message *****\n{Fore.CYAN}Press {Fore.RED}'t' {Fore.CYAN}to type a message\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n{Fore.RED}")
 
 inp_option=[]
 inp_option.append(f"{Fore.LIGHTMAGENTA_EX}Enter group name to manage: ")
@@ -42,6 +43,7 @@ user = ""
 confirm = ""
 
 def user_interface(display_menu=0):
+    global confirm
     while (True):
         choice=input(menu_option[display_menu])
         if display_menu==0:
@@ -54,9 +56,9 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
-                # confirm = server.recv(1)
-                # confirm = confirm.decode('utf-8')
+                sleep(1)
                 if(confirm == "y"):
+                    confirm = "n"
                     display_menu=3
                 else:
                     print(f"{Fore.RED}No group found\n")
@@ -67,9 +69,9 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
-                # confirm = server.recv(1)
-                # confirm = confirm.decode('utf-8')
+                sleep(1)
                 if(confirm == "y"):
+                    confirm = "n"
                     user=ind_name
                     display_menu=4
                 else:
@@ -77,9 +79,9 @@ def user_interface(display_menu=0):
             elif choice=='l':
                 to_send="quit".encode('utf-8')
                 server.sendall(to_send)
-                exit()
+                return
             else:
-                print("Invalid option")
+                print(f"{Fore.RED}Invalid option")
         elif display_menu==1:
             if choice=='n':
                 grp_name=input(inp_option[3])
@@ -88,9 +90,9 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
-                # confirm = server.recv(1)
-                # confirm = confirm.decode('utf-8')
+                sleep(1)
                 if(confirm == "y"):
+                    confirm = "n"
                     print(f"{Fore.GREEN}New group created\n")
                 else:
                     print(f"{Fore.RED}Group already exists\n")
@@ -101,17 +103,21 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
-                # confirm = server.recv(1)
-                # confirm = confirm.decode('utf-8')
+                sleep(1)
                 if(confirm == "y"):
+                    confirm = "n"
                     group = grp_name
                     display_menu=2
                 else:
                     print(f"{Fore.RED}No group found\n")
+            elif choice=='s':
+                to_send = "{}:{}".format("fa", group).encode('utf-8')
+                server.sendall(to_send)
+                sleep(1)
             elif choice=='q':
                 display_menu=0
             else:
-                print("Invalid option")
+                print(f"{Fore.RED}Invalid option")
         elif display_menu==2:
             if choice=='a':
                 ind_name=input(inp_option[1])
@@ -120,10 +126,10 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
-                # confirm = server.recv(1)
-                # confirm = confirm.decode('utf-8')
+                sleep(1)
                 if(confirm == "y"):
-                     print(f"{Fore.GREEN}User added\n")
+                    confirm = "n"
+                    print(f"{Fore.GREEN}User added\n")
                 else:
                     print(f"{Fore.RED}No user found\n")
             elif choice=='r':
@@ -133,19 +139,16 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
-                # confirm = server.recv(1)
-                # confirm = confirm.decode('utf-8')
+                sleep(1)
                 if(confirm == "y"):
+                    confirm = "n"
                     print(f"{Fore.GREEN}User removed\n")
                 else:
                     print(f"{Fore.RED}No user found in group\n")
-            elif choice=='s':
-                to_send = "{}:{}".format("fa", group).encode('utf-8')
-                server.sendall(to_send)
             elif choice=='q':
                 display_menu=1
             else:
-                print("Invalid option")
+                print(f"{Fore.RED}Invalid option")
         elif display_menu==3:
             if choice=='t':
                 msg=input()
@@ -154,16 +157,16 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
-                # confirm = server.recv(1)
-                # confirm = confirm.decode('utf-8')
+                sleep(1)
                 if(confirm == "y"):
+                    confirm = "n"
                     print(f"{Fore.GREEN}Message sent\n")
                 else:
                     print(f"{Fore.RED}Message failed to send\n")
             elif choice=='q':
                 display_menu=0
             else:
-                print("Invalid option")
+                print(f"{Fore.RED}Invalid option")
         elif display_menu==4:
             if choice=='t':
                 msg=input()
@@ -172,35 +175,32 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
-                # confirm = server.recv(1)
-                # confirm = confirm.decode('utf-8')
+                sleep(1)
                 if(confirm == "y"):
+                    confirm = "n"
                     print(f"{Fore.GREEN}Message sent\n")
                 else:
                     print(f"{Fore.RED}Message failed to send\n")
             elif choice=='q':
                 display_menu=0
             else:
-                print("Invalid option")
-        # elif display_menu==5:
-        #     if choice=='t':
-        #         pass
-        #     elif choice=='q':
-        #         display_menu=0
-        #     else:
-        #         print("Invalid option")
+                print(f"{Fore.RED}Invalid option")
        
 
 def receiving_func():
     while (True):
         msg_to_come=server.recv(1).decode('utf-8')
         if(msg_to_come=="c"):
+            global confirm
             confirm=server.recv(1).decode('utf-8')
         elif(msg_to_come=="s"):
             members=server.recv(2048).decode('utf-8')
             members=members.split(":")
             for member in members:
                 print(Fore.YELLOW+member)
+        elif(msg_to_come=="q"):
+            print(Fore.GREEN+"Logged out successfully")
+            return
 
 
 usr = ""
@@ -233,10 +233,8 @@ while not success:
         server.sendall(to_send)
         confirm = server.recv(1)
         confirm = confirm.decode('utf-8')
-        print(confirm)
         if (confirm == "y"):
-            success = True
-            print(f"{Fore.GREEN}Successfully signed up\n")
+            print(f"{Fore.GREEN}Successfully signed up\nPlease login\n")
         else:
             print(f"{Fore.RED}Username already taken\n")
 
@@ -249,35 +247,18 @@ while not success:
         print("Invalid Input")
 # user is now logged in
 
+thread1 = threading.Thread(target=receiving_func, args=())
+thread2 = threading.Thread(target=user_interface, args=())
+# Starting thread 1
+thread1.start()
 
-while True:
+# Starting thread 2
+thread2.start()
 
-    # maintains a list of possible input streams
-    sockets_list = [sys.stdin, server]
+# Wait until thread 1 is completely executed
+thread1.join()
 
-    """ There are two possible input situations. Either the
-        user wants to give manual input to send to other people,
-        or the server is sending a message to be printed on the
-        screen. Select returns from sockets_list, the stream that
-        is reader for input. So for example, if the server wants
-        to send a message, then the if condition will hold true
-        below.If the user wants to send a message, the else
-        condition will evaluate as true"""
-
- 
-
-    thread1 = threading.Thread(target=receiving_func, args=())
-    thread2 = threading.Thread(target=user_interface, args=())
-    # Starting thread 1
-    thread1.start()
-
-   # Starting thread 2
-    thread2.start()
-
-    # Wait until thread 1 is completely executed
-    thread1.join()
-
-   # Wait until thread 2 is completely executed
-    thread2.join()
+# Wait until thread 2 is completely executed
+thread2.join()
 
 server.close()
