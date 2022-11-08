@@ -45,10 +45,6 @@ username_conn = {}
 dbconn = psycopg2.connect(database="fastchat", user="postgres",
                           password="", host="127.0.0.1", port="5432")
 cur = dbconn.cursor()
-cur.execute('''CREATE TABLE IF NOT EXISTS GROUPS
-      (NAME VARCHAR(50) NOT NULL,
-      ADMIN VARCHAR(50) NOT NULL,
-	  CONSTRAINT PK_GROUP PRIMARY KEY(NAME, ADMIN));''')
 
 cur.execute('''CREATE TABLE IF NOT EXISTS CREDENTIALS
       (USERNAME VARCHAR(50) PRIMARY KEY NOT NULL,
@@ -58,12 +54,40 @@ cur.execute('''CREATE TABLE IF NOT EXISTS ONLINE
       (USERNAME VARCHAR(50) PRIMARY KEY NOT NULL,
 	  PORT TEXT NOT NULL);''')
 
-cur.execute('''CREATE TABLE IF NOT EXISTS INDVMSSGS
-      (SENDER VARCHAR(50) NOT NULL,
-	  RECV VARCHAR(50) NOT NULL,
-	  MESSAGE TEXT NOT NULL);''')
+cur.execute('''CREATE TABLE IF NOT EXISTS GROUPS
+      (NAME VARCHAR(50) NOT NULL,
+      ADMIN VARCHAR(50) NOT NULL,
+      NUMBER INT NOT NULL,
+      MEMBER1 VARCHAR(50) NOT NULL,
+      MEMBER2 VARCHAR(50),
+      MEMBER3 VARCHAR(50),
+      MEMBER4 VARCHAR(50),
+      MEMBER5 VARCHAR(50),
+      MEMBER6 VARCHAR(50),
+      MEMBER7 VARCHAR(50),
+      MEMBER8 VARCHAR(50),
+      MEMBER9 VARCHAR(50),
+      MEMBER10 VARCHAR(50),
+      MEMBER11 VARCHAR(50),
+      MEMBER12 VARCHAR(50),
+      MEMBER13 VARCHAR(50),
+      MEMBER14 VARCHAR(50),
+      MEMBER15 VARCHAR(50),
+      MEMBER16 VARCHAR(50),
+      MEMBER17 VARCHAR(50),
+      MEMBER18 VARCHAR(50),
+      MEMBER19 VARCHAR(50),
+      MEMBER20 VARCHAR(50),
+	  CONSTRAINT PK_GROUP PRIMARY KEY(NAME, ADMIN));''')
 
-cur.execute('''CREATE TABLE IF NOT EXISTS GRPMSSGS
+
+cur.execute('''CREATE TABLE IF NOT EXISTS IND_MSG
+      (SENDER VARCHAR(50) NOT NULL,
+	  RECEIVER VARCHAR(50) NOT NULL,
+	  MESSAGE TEXT NOT NULL,
+      GRP VARCHAR(50));''')
+
+cur.execute('''CREATE TABLE IF NOT EXISTS GRP_MSG
       (GRPNAME VARCHAR(50) NOT NULL,
 	  SENDER VARCHAR(50) NOT NULL,
 	  MESSAGE TEXT NOT NULL);''')
@@ -72,8 +96,7 @@ dbconn.commit()
 
 
 def clientthread(conn, addr):
-    username = 0
-    # sends a message to the client whose user object is conn
+    username = ""
     success = False
     while not success:
         inp = conn.recv(512)
@@ -81,7 +104,6 @@ def clientthread(conn, addr):
         if (inp == "quit"):
             remove(conn)
             return
-
         inp = inp.split(":")
         username = inp[1]
         to_check = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{inp[1]}' "
@@ -89,94 +111,257 @@ def clientthread(conn, addr):
         selected_entry = cur.fetchone()
 
         if selected_entry == None:
+
             if (inp[0] == "1"):
-                conn.send(bytes("n", 'utf-8'))
+                conn.sendall(bytes("n", 'utf-8'))
             else:
                 postgres_insert_query = f'''INSERT INTO CREDENTIALS (USERNAME, PASSWORD) VALUES ('{inp[1]}', '{inp[2]}')'''
                 cur.execute(postgres_insert_query)
                 dbconn.commit()
-                conn.send(bytes("y", 'utf-8'))
-                success = True
+                conn.sendall(bytes("y", 'utf-8'))
                 to_check = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{inp[1]}' "
                 cur.execute(to_check)
         else:
             if (inp[0] == "2"):
-                conn.send(bytes("n", 'utf-8'))
+                conn.sendall(bytes("n", 'utf-8'))
             else:
-                if (inp[2] == selected_entry[0]):
-                    conn.send(bytes("y", 'utf-8'))
+                if (inp[2] == selected_entry[1]):
+                    conn.sendall(bytes("y", 'utf-8'))
                     success = True
                 else:
-                    conn.send(bytes("n", 'utf-8'))
+                    conn.sendall(bytes("n", 'utf-8'))
 
     username_conn[username] = conn
+
+    # Before going further we can arrange that all the previous messages are being sent to
+    # the user.
+    to_check = f"SELECT * FROM IND_MSG WHERE RECEIVER = '{username}' "
+    cur.execute(to_check)
+    selected_entry = cur.fetchall()
+    conn.sendall(str(len(selected_entry)).zfill(2).encode('utf-8'))
+    for e in selected_entry:
+        if e[3] == None:
+            msg = "<{}> {}".format(e[0], e[2])
+            conn.sendall(str(len(msg)).zfill(3).encode('utf-8'))
+            conn.sendall(msg.encode('utf-8'))
+        else:
+            msg = "<Group:{}> <User:{}> {}".format(e[3], e[0], e[2])
+            conn.sendall(str(len(msg)).zfill(3).encode('utf-8'))
+            conn.sendall(msg.encode('utf-8'))
+    to_do = f"DELETE FROM IND_MSG WHERE RECEIVER = '{username}'"
+    cur.execute(to_do)
+    dbconn.commit()
+
     while True:
         try:
-            message = conn.recv(1).decode('utf-8')
+            message = conn.recv(512).decode('utf-8')
             print(message)
-            if message == "d":
-                to_usr = conn.recv(512).decode('utf-8')
-                to_msg = conn.recv(512)
-                print(to_usr)
+            if (not message or message == "quit"):
+                print("to")
+                to_send = "q".encode('utf-8')
+                conn.sendall(to_send)
+                remove(conn, username)
+                return
 
-                find_usr = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{to_usr}' "
-                cur.execute(find_usr)
+            message = message.split(":")
+            code = message[0]
+
+            if code == "cg":
+                grp_name = message[1]
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' "
+                cur.execute(find_grp)
                 entry = cur.fetchone()
                 if entry == None:
-                    # Send client that user does not exist
-                    a = "user does not exist"
-                    conn.sendall(a.encode('utf-8'))
-                    pass
+                    out = "n".encode('utf-8')
+                    conn.sendall(out)
                 else:
+                    out = "y".encode('utf-8')
+                    conn.sendall(out)
+
+            elif code == "ci":
+                ind_name = message[1]
+                find_ind = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{ind_name}' "
+                cur.execute(find_ind)
+                entry = cur.fetchone()
+                if entry == None:
+                    out = "n".encode('utf-8')
+                    conn.sendall(out)
+                else:
+                    out = "y".encode('utf-8')
+                    conn.sendall(out)
+
+            elif code == "ng":
+                # new group
+                grp_name = message[1]
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                cur.execute(find_grp)
+                entry = cur.fetchone()
+                if entry == None:
+                    postgres_insert_query = f"INSERT INTO GROUPS (NAME, ADMIN, NUMBER, MEMBER1) VALUES ('{grp_name}', '{username}', 1, '{username}')"
+                    cur.execute(postgres_insert_query)
+                    dbconn.commit()
+                    out = "y".encode('utf-8')
+                    conn.sendall(out)
+                else:
+                    out = "n".encode('utf-8')
+                    conn.sendall(out)
+
+            elif code == "eg":
+                # existing group
+                grp_name = message[1]
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                cur.execute(find_grp)
+                entry = cur.fetchone()
+                print(entry, "ouiiiiii")
+                if entry == None:
+                    out = "n".encode('utf-8')
+                    conn.sendall(out)
+                else:
+                    out = "y".encode('utf-8')
+                    conn.sendall(out)
+
+            elif code == "fa":
+                grp_name = message[1]
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' "
+                cur.execute(find_grp)
+                entry_grp = cur.fetchone()
+
+            elif code == "ai":
+                grp_name = message[1]
+
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                cur.execute(find_grp)
+                entry_grp = cur.fetchone()
+                ind_name = message[2]
+                find_ind = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{ind_name}' "
+                cur.execute(find_ind)
+                entry_ind = cur.fetchone()
+
+                if entry_ind == None:
+                    out = "n".encode('utf-8')  # non-exs.
+                    conn.sendall(out)
+
+                else:
+                    if entry_grp[2] == 20:
+                        out = "l".encode('utf-8')  # lim-exc.
+                        conn.sendall(out)
+
+                    elif ind_name in entry_grp[3:]:
+                        out = "p".encode('utf-8')  # al-pre.
+                        conn.sendall(out)
+
+                    else:
+                        num_present = entry_grp[2]
+                        column = "member"+f"{num_present+1}"
+                        update_query = f"UPDATE GROUPS SET {column} = '{ind_name}', number = number + 1  WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                        cur.execute(update_query)
+                        dbconn.commit()
+                        out = "y".encode('utf-8')   # added
+                        conn.sendall(out)
+
+            elif code == "ri":
+                grp_name = message[1]
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                cur.execute(find_grp)
+                entry_grp = cur.fetchone()
+                ind_name = message[2]
+
+                try:
+                    index = entry_grp[4:].index(ind_name)
+                    num_present = entry_grp[2]
+                    column1 = "member"+f"{index+2}"
+                    column2 = "member"+f"{num_present}"
+                    update_query = f"UPDATE GROUPS SET {column1} = {column2}, NUMBER = {num_present-1} WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                    cur.execute(update_query)
+                    dbconn.commit()
+                    update_query = f"UPDATE GROUPS SET {column2} = NULL WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                    cur.execute(update_query)
+                    dbconn.commit()
+                    out = "y".encode('utf-8')  # pre.
+                    conn.sendall(out)
+                except:
+                    out = "n".encode('utf-8')  # not-pre.
+                    conn.sendall(out)
+
+            elif code == "sa":
+                grp_name = message[1]
+                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                cur.execute(find_grp)
+                entry_grp = cur.fetchone()
+                conn.sendall("s".encode('utf-8'))
+                try:
+                    members = ''
+                    for m in entry_grp[3:3+entry_grp[2]]:
+                        members = members + m + ':'
+                    members = members[:-1]
+                    conn.sendall(members.encode('utf-8'))
+                except:
+                    conn.sendall('n'.encode('utf-8'))
+
+            elif code == "wg":
+                to_grp = message[1]
+                msg = conn.recv(512)
+                try:
+                    find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{to_grp}'"
+                    cur.execute(find_grp)
+                    entry_grp = cur.fetchone()
+
+                    for to_usr in entry_grp[3:3 + entry_grp[2]]:
+                        if to_usr == username:
+                            continue
+                        elif to_usr in username_conn.keys():
+                            # Recieving user is active
+                            username_conn[to_usr].send('g'.encode('utf-8'))
+
+                            username_conn[to_usr].send(
+                                str(len(username)).zfill(2).encode('utf-8'))
+
+                            username_conn[to_usr].send(
+                                username.encode('utf-8'))
+
+                            username_conn[to_usr].send(
+                                str(len(grp_name)).zfill(2).encode('utf-8'))
+
+                            username_conn[to_usr].send(
+                                grp_name.encode('utf-8'))
+
+                            username_conn[to_usr].send(msg)
+                        else:
+                            # check table
+                            postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE, GRP) VALUES ('{username}', '{to_usr}', '{msg.decode('utf-8')}', '{grp_name}');'''
+                            cur.execute(postgres_insert_query)
+                            dbconn.commit()
+
+                    conn.sendall("y".encode('utf-8'))
+                except:
+                    conn.sendall("n".encode('utf-8'))
+
+            elif code == "wi":
+                to_usr = message[1]
+                msg = conn.recv(512)
+                try:
                     if to_usr in username_conn.keys():
                         # Recieving user is active
-                        username_conn[to_usr].send(to_msg)
+                        username_conn[to_usr].send('u'.encode('utf-8'))
+
+                        username_conn[to_usr].send(
+                            str(len(username)).zfill(2).encode('utf-8'))
+
+                        username_conn[to_usr].send(username.encode('utf-8'))
+
+                        username_conn[to_usr].send(msg)
                     else:
-                        postgres_insert_query = f'''INSERT INTO INDVMSSGS (SENDER, RECV, MESSAGE) VALUES ('{username}', '{to_usr}', '{to_msg.decode('utf-8')}')'''
+                        # check table
+                        postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE) VALUES ('{username}', '{to_usr}', '{msg.decode('utf-8')}');'''
                         cur.execute(postgres_insert_query)
                         dbconn.commit()
-            elif message == "g":
-                pass
-            elif message == "b":
-                pass
-            elif message == "l":
-                pass
-            if message:
 
-                """prints the message and address of the
-                user who just sent the message on the server
-                terminal"""
-                print("<" + addr[0] + "> " + message.decode('utf-8'))
-
-                # Calls broadcast function to send message to all
-                message_to_send = "<" + addr[0] + \
-                    "> " + message.decode('utf-8')
-                broadcast(message_to_send, conn)
-
-            else:
-                """message may have no content if the connection
-                is broken, in this case we remove the connection"""
-                remove(conn)
+                    conn.sendall("y".encode('utf-8'))
+                except:
+                    conn.sendall("n".encode('utf-8'))
 
         except:
             continue
-
-
-"""Using the below function, we broadcast the message to all
-clients who's object is not the same as the one sending
-the message """
-
-
-def broadcast(message, connection):
-    for clients in list_of_clients:
-        if clients != connection:
-            try:
-                clients.send(bytes(message, 'utf-8'))
-            except:
-                clients.close()
-
-                # if the link is broken, we remove the client
-                remove(clients)
 
 
 """The following function simply removes the object
@@ -184,7 +369,8 @@ from the list that was created at the beginning of
 the program"""
 
 
-def remove(connection):
+def remove(connection, usr):
+    del username_conn[usr]
     if connection in list_of_clients:
         list_of_clients.remove(connection)
 
