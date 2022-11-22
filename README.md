@@ -44,4 +44,3 @@ Database Fastchat is created which contains these tables:
 - Performance analysis
 
 ## Team members' contributions
-
