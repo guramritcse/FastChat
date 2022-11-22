@@ -108,6 +108,7 @@ def user_interface(display_menu=0):
                 to_send = "quit".encode('utf-8')
                 server.sendall(to_send)
                 return
+
             else:
                 print(f"{Fore.RED}Invalid option")
 
@@ -150,11 +151,13 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}No group found\n")
                 lock.release()
 
-            elif choice == 's':
-                to_send = "{}:{}".format("fa", group).encode('utf-8')
-                server.sendall(to_send)
+            # elif choice == 's':
+            #     to_send = "{}:{}".format("fa", group).encode('utf-8')
+            #     server.sendall(to_send)
+
             elif choice == 'q':
                 display_menu = 0
+
             else:
                 print(f"{Fore.RED}Invalid option")
 
@@ -163,7 +166,7 @@ def user_interface(display_menu=0):
                 ind_name = input(inp_option[1])
                 to_send = "{}:{}:{}".format(
                     "ai", group, ind_name).encode('utf-8')
-                if (len(to_send) > 512):
+                if (len(to_send) > 10):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
@@ -224,8 +227,10 @@ def user_interface(display_menu=0):
 
                 if (len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
+                    server.send("ab".encode('utf-8'))
                     continue
-
+                
+                server.send("co".encode('utf-8'))
                 server.sendall(to_send)
                 while (last == 1):
                     continue
@@ -248,14 +253,18 @@ def user_interface(display_menu=0):
                 split_path=os.path.splitext(img_add)
                 if not split_path[1] in allowed_ext:
                     print(f"{Fore.RED}Extension not supported\n")
+                    server.send("ab".encode('utf-8'))
                     continue
+                server.send("co".encode('utf-8'))
                 try:
                     myfile = open(img_add, 'rb')
                     bytes = myfile.read()
                     size = len(bytes)
                 except:
                     print(f"{Fore.RED}Error in loading the file\n")
+                    server.send("ab".encode('utf-8'))
                     continue
+                server.send("co".encode('utf-8'))
                 server.send(str(len(split_path[1])).zfill(1).encode('utf-8'))
                 server.sendall(split_path[1].encode('utf-8'))
                 server.send(str(len(str(size))).zfill(2).encode('utf-8'))
@@ -286,8 +295,9 @@ def user_interface(display_menu=0):
 
                 if (len(to_send) > 512):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
+                    server.send("ab".encode('utf-8'))
                     continue
-
+                server.send("co".encode('utf-8'))
                 server.sendall(to_send)
                 while (last == 1):
                     continue
@@ -310,14 +320,18 @@ def user_interface(display_menu=0):
                 split_path=os.path.splitext(img_add)
                 if not split_path[1] in allowed_ext:
                     print(f"{Fore.RED}Extension not supported\n")
+                    server.send("ab".encode('utf-8'))
                     continue
+                server.send("co".encode('utf-8'))
                 try:
                     myfile = open(img_add, 'rb')
                     bytes = myfile.read()
                     size = len(bytes)
                 except:
                     print(f"{Fore.RED}Error in loading the file\n")
+                    server.send("ab".encode('utf-8'))
                     continue
+                server.send("co".encode('utf-8'))
                 server.send(str(len(split_path[1])).zfill(1).encode('utf-8'))
                 server.sendall(split_path[1].encode('utf-8'))
                 server.send(str(len(str(size))).zfill(2).encode('utf-8'))

@@ -84,9 +84,10 @@ cur.execute('''CREATE TABLE IF NOT EXISTS GROUPS
 cur.execute('''CREATE TABLE IF NOT EXISTS IND_MSG
       (SENDER VARCHAR(50) NOT NULL,
 	  RECEIVER VARCHAR(50) NOT NULL,
-	  MESSAGE TEXT NOT NULL,
+	  MESSAGE BYTEA NOT NULL,
       GRP VARCHAR(50),
-      EXTENSION VARCHAR(20));''')
+      EXTENSION VARCHAR(20),
+      SIZE VARCHAR(100));''')
 
 cur.execute('''CREATE TABLE IF NOT EXISTS GRP_MSG
       (GRPNAME VARCHAR(50) NOT NULL,
@@ -144,7 +145,7 @@ def clientthread(conn, addr):
         if e[3] == None:
             if e[4] == None:
                 conn.send("in".encode('utf-8'))
-                msg = "<{}> {}".format(e[0], e[2])
+                msg = "<{}> {}".format(e[0], bytes(e[2]).decode())
                 conn.sendall(str(len(msg)).zfill(3).encode('utf-8'))
                 conn.sendall(msg.encode('utf-8'))
             else:
@@ -153,13 +154,13 @@ def clientthread(conn, addr):
                 conn.send(e[0].encode('utf-8'))
                 conn.send(str(len(e[4])).zfill(1).encode('utf-8'))
                 conn.send(e[4].encode('utf-8'))
-                conn.send(str(len(str(len(e[2])))).zfill(2).encode('utf-8'))
-                conn.send(str(len(e[2])).encode('utf-8'))
-                conn.send(e[2].encode('utf-8'))
+                conn.send(str(len(e[5])).zfill(2).encode('utf-8'))
+                conn.send(e[5].encode('utf-8'))
+                conn.send(bytes(e[2]))
         else:
             if e[4]==None:
                 conn.send("gn".encode('utf-8'))
-                msg = "<Group:{}> <User:{}> {}".format(e[3], e[0], e[2])
+                msg = "<Group:{}> <User:{}> {}".format(e[3], e[0], bytes(e[2]).decode())
                 conn.sendall(str(len(msg)).zfill(3).encode('utf-8'))
                 conn.sendall(msg.encode('utf-8'))
             else:
@@ -170,9 +171,9 @@ def clientthread(conn, addr):
                 conn.send(e[3].encode('utf-8'))
                 conn.send(str(len(e[4])).zfill(1).encode('utf-8'))
                 conn.send(e[4].encode('utf-8'))
-                conn.send(str(len(str(len(e[2])))).zfill(2).encode('utf-8'))
-                conn.send(str(len(e[2])).encode('utf-8'))
-                conn.send(e[2].encode('utf-8'))
+                conn.send(str(len(e[5])).zfill(2).encode('utf-8'))
+                conn.send(e[5].encode('utf-8'))
+                conn.send(bytes(e[2]))
     to_do = f"DELETE FROM IND_MSG WHERE RECEIVER = '{username}'"
     cur.execute(to_do)
     dbconn.commit()
@@ -244,11 +245,11 @@ def clientthread(conn, addr):
                     out = "y".encode('utf-8')
                     conn.sendall(out)
 
-            elif code == "fa":
-                grp_name = message[1]
-                find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' "
-                cur.execute(find_grp)
-                entry_grp = cur.fetchone()
+            # elif code == "fa":
+            #     grp_name = message[1]
+            #     find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' "
+            #     cur.execute(find_grp)
+            #     entry_grp = cur.fetchone()
 
             elif code == "ai":
                 grp_name = message[1]
@@ -324,6 +325,9 @@ def clientthread(conn, addr):
 
             elif code == "wg":
                 to_grp = message[1]
+                to_continue = conn.recv(2).decode('utf-8')
+                if to_continue == "ab":
+                    continue
                 msg = conn.recv(512)
                 try:
                     find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{to_grp}'"
@@ -343,7 +347,7 @@ def clientthread(conn, addr):
                             username_conn[to_usr].send(msg)
                         else:
                             # check table
-                            postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE, GRP) VALUES ('{username}', '{to_usr}', '{msg.decode('utf-8')}', '{grp_name}');'''
+                            postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE, GRP) VALUES ('{username}', '{to_usr}', decode('{bytes(msg).hex()}', 'hex'), '{grp_name}');'''
                             cur.execute(postgres_insert_query)
                             dbconn.commit()
 
@@ -353,6 +357,12 @@ def clientthread(conn, addr):
 
             elif code=="ig":
                 to_grp = message[1]
+                to_continue = conn.recv(2).decode('utf-8')
+                if to_continue == "ab":
+                    continue
+                to_continue = conn.recv(2).decode('utf-8')
+                if to_continue == "ab":
+                    continue
                 ext = conn.recv(int(conn.recv(1).decode('utf-8'))).decode('utf-8')
                 size = int(conn.recv(int(conn.recv(2).decode('utf-8'))).decode('utf-8'))
                 msg = conn.recv(size)
@@ -378,7 +388,7 @@ def clientthread(conn, addr):
                             username_conn[to_usr].send(msg)
                         else:
                             # check table
-                            postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE, GRP, EXTENSION) VALUES ('{username}', '{to_usr}', '{msg.decode('utf-8')}', '{grp_name}', '{ext}');'''
+                            postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE, GRP, EXTENSION, SIZE) VALUES ('{username}', '{to_usr}', decode('{bytes(msg).hex()}', 'hex'), '{grp_name}', '{ext}', {str(size)});'''
                             cur.execute(postgres_insert_query)
                             dbconn.commit()
 
@@ -389,6 +399,9 @@ def clientthread(conn, addr):
 
             elif code == "wi":
                 to_usr = message[1]
+                to_continue = conn.recv(2).decode('utf-8')
+                if to_continue == "ab":
+                    continue
                 msg = conn.recv(512)
                 try:
                     if to_usr in username_conn.keys():
@@ -399,7 +412,7 @@ def clientthread(conn, addr):
                         username_conn[to_usr].send(msg)
                     else:
                         # check table
-                        postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE) VALUES ('{username}', '{to_usr}', '{msg.decode('utf-8')}');'''
+                        postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE) VALUES ('{username}', '{to_usr}', decode('{bytes(msg).hex()}', 'hex'));'''
                         cur.execute(postgres_insert_query)
                         dbconn.commit()
 
@@ -409,6 +422,14 @@ def clientthread(conn, addr):
             
             elif code == "ii":
                 to_usr = message[1]
+                to_continue = conn.recv(2).decode('utf-8')
+                print(to_continue)
+                if to_continue == "ab":
+                    continue
+                to_continue = conn.recv(2).decode('utf-8')
+                print(to_continue)
+                if to_continue == "ab":
+                    continue
                 ext = conn.recv(int(conn.recv(1).decode('utf-8'))).decode('utf-8')
                 size = int(conn.recv(int(conn.recv(2).decode('utf-8'))).decode('utf-8'))
                 msg = conn.recv(size)
@@ -423,11 +444,13 @@ def clientthread(conn, addr):
                         username_conn[to_usr].send(str(len(str(size))).zfill(2).encode('utf-8'))
                         username_conn[to_usr].send(str(size).encode('utf-8'))
                         username_conn[to_usr].send(msg)
+                        print("yes")
                     else:
                         # check table
-                        postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE, GRP, EXTENSION) VALUES ('{username}', '{to_usr}', '{msg.decode('utf-8')}', NULL, '{ext}');'''
+                        postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE, GRP, EXTENSION, SIZE) VALUES ('{username}', '{to_usr}', decode('{bytes(msg).hex()}', 'hex'), NULL, '{ext}', {str(size)});'''
                         cur.execute(postgres_insert_query)
                         dbconn.commit()
+                        print("yes")
 
                     conn.sendall("y".encode('utf-8'))
                 except:
