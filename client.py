@@ -15,7 +15,7 @@ from _thread import *
 lock = threading.Lock()
 
 allowed_ext=[".png", ".jpg", ".jpeg", ".txt"]
-counter=int(''.join(re.findall(r'\d+', str(datetime.datetime.now()))))
+counter=int(''.join(re.findall(r'\d+', str(datetime.datetime.utcnow()))))
 
 menu_option = []
 menu_option.append(f"{Fore.GREEN}***** Main Menu *****\n{Fore.CYAN}Press {Fore.RED}'g' {Fore.CYAN}for managing groups\nPress {Fore.RED}'b' {Fore.CYAN}to send group message\nPress {Fore.RED}'d' {Fore.CYAN}to send direct message\nPress {Fore.RED}'l' {Fore.CYAN}to logout\n{Fore.RED}")
