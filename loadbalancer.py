@@ -117,7 +117,8 @@ cur.execute('''CREATE TABLE IF NOT EXISTS IND_MSG
 	  MESSAGE BYTEA NOT NULL,
       GRP VARCHAR(50),
       EXTENSION VARCHAR(20),
-      SIZE VARCHAR(100));''')
+      SIZE VARCHAR(100),
+      PVT_KEY BYTEA);''')
 
 # cur.execute('''CREATE TABLE IF NOT EXISTS GRP_MSG
 #       (GRPNAME VARCHAR(50) NOT NULL,
@@ -226,6 +227,7 @@ def clientthread(conn, addr):
                 pub_key = conn.recv(
                     int(pub_len.decode('utf-8')))
                 grp_keys[grp_name]=pub_key
+                print(grp_name)
 
 
     elif (c == 'c'):
@@ -268,12 +270,13 @@ def clientthread(conn, addr):
                     # cur.execute(to_check)
 
             else:
-                if (inp[0] == "2"):
+                if inp[0] == "2":
                     conn.sendall(bytes("n", 'utf-8'))
+                elif inp[1] in user_con.keys():
+                    conn.sendall(bytes("a", 'utf-8'))
                 else:
                     conn.sendall(bytes("y", 'utf-8'))
-                    conn.sendall(
-                        str(len(selected_entry[1])).zfill(4).encode('utf-8'))
+                    conn.sendall(str(len(selected_entry[1])).zfill(4).encode('utf-8'))
                     conn.sendall((selected_entry[1]).encode('utf-8'))
                     verified = conn.recv(1).decode('utf-8')
                     if (verified == "y"):

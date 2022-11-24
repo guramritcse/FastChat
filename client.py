@@ -191,7 +191,6 @@ def user_interface(display_menu=0):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
                     continue
                 server.sendall(to_send)
-                print("inf")
                 while (last == 1):
                     continue
                 lock.acquire()
@@ -199,14 +198,12 @@ def user_interface(display_menu=0):
                 co = 0
                 if (confirm == "y"):
                     confirm = "n"
-                    # print(f"{Fore.GREEN}User added\n")
                     co = 1
                 else:
                     # set for all confirm messages
                     print(f"{Fore.RED}No user found\n")
                 lock.release()
                 if co == 1:
-                    print(to_public)
                     public = RSA.importKey(to_public)
                     public = PKCS1_OAEP.new(public)
                     while (last == 1):
@@ -214,7 +211,6 @@ def user_interface(display_menu=0):
                     lock.acquire()
                     last = 1
                     lock.release()
-                    print(grp_key_str)
                     size = len(grp_key_str)
                     server.sendall(str(size).zfill(4).encode('utf-8'))
                     iter = size//86
@@ -498,11 +494,9 @@ def receiving_func():
                 confirm = "y"
 
         elif (msg_to_come == "k"):
-            print("hello")
             grp = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
             size = int(server.recv(4).decode('utf-8'))
             iter = size//86
-            print(grp, size)
             msg=[]
             for i in range(iter):
                 data = server.recv(128)
@@ -511,12 +505,13 @@ def receiving_func():
                 data = server.recv(128)
                 msg.append(prvt_key.decrypt(data))
             p_key = b''.join(msg)
-            print("hey")
             enc_grp_pvt_key = cryptocode.encrypt(p_key.decode(), pwd)
-            # print(str(len(enc_grp_pvt_key)).zfill(4).encode('utf-8'))
-            server.sendall(str(1259).zfill(4).encode('utf-8'))
+            to_send = "{}:{}:".format("gk", grp).ljust(512, '0').encode('utf-8')
+            server.sendall(to_send)
+            server.sendall(str(len(enc_grp_pvt_key)).zfill(4).encode('utf-8'))
             server.sendall(enc_grp_pvt_key.encode('utf-8'))
             print(Fore.GREEN + f"You were added to group: {grp}")
+            last=1
 
         elif (msg_to_come == "p"):
             grp_key_str = server.recv(
@@ -552,6 +547,10 @@ def receiving_func():
             last = 1
 
         elif (msg_to_come == "g"):
+            g_pvt_key_str = server.recv(int(server.recv(4).decode('utf-8'))).decode('utf-8')
+            g_pvt_key_str = cryptocode.decrypt(g_pvt_key_str, pwd)
+            g_prvt_key = RSA.importKey(g_pvt_key_str.encode())
+            g_prvt_key = PKCS1_OAEP.new(g_prvt_key)
             user = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
             grp = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
             size = int(server.recv(4).decode('utf-8'))
@@ -559,15 +558,19 @@ def receiving_func():
             msg = []
             for i in range(iter):
                 data = server.recv(128)
-                msg.append(prvt_key.decrypt(data))
+                msg.append(g_prvt_key.decrypt(data))
             if not size%86 == 0:
                 data = server.recv(128)
-                msg.append(prvt_key.decrypt(data))
+                msg.append(g_prvt_key.decrypt(data))
             message = b''.join(msg)
-            print(Fore.RED + "<Group: " + grp + "> " + "<User: " + user + "> " + msg)
+            print(Fore.RED + "<Group: " + grp + "> " + "<User: " + user + "> " + message.decode('utf-8'))
             last = 1
 
         elif (msg_to_come == "a"):
+            g_pvt_key_str = server.recv(int(server.recv(4).decode('utf-8'))).decode('utf-8')
+            g_pvt_key_str = cryptocode.decrypt(g_pvt_key_str, pwd)
+            g_prvt_key = RSA.importKey(g_pvt_key_str.encode())
+            g_prvt_key = PKCS1_OAEP.new(g_prvt_key)
             user = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
             grp = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
             ext = server.recv(int(server.recv(1).decode('utf-8'))).decode('utf-8')
@@ -576,16 +579,16 @@ def receiving_func():
             msg = []
             for i in range(iter):
                 data = server.recv(128)
-                msg.append(prvt_key.decrypt(data))
+                msg.append(g_prvt_key.decrypt(data))
             if not size%86 == 0:
                 data = server.recv(128)
-                msg.append(prvt_key.decrypt(data))
+                msg.append(g_prvt_key.decrypt(data))
             message = b''.join(msg)
             print(Fore.RED + "<Group: " + grp + "> " + "<User: " + user + "> " + "Sent a file which is placed at " + f"__received__{usr}__/{grp}_{user}_{counter}{ext}")
             if not os.path.exists(f"__received__{usr}__"):
                 os.makedirs(f"__received__{usr}__")
             myfile = open(f"__received__{usr}__/{grp}_{user}_{counter}{ext}", 'wb')
-            myfile.write(msg)
+            myfile.write(message)
             myfile.close()
             counter+= 1
             last = 1
@@ -623,8 +626,12 @@ usr = ""
 success = False
 server.sendall("c".encode('utf-8'))
 while not success:
-    x = int(
-        input(f"{Fore.MAGENTA}1. Login\n2. Sign Up\n3. Quit\n{Fore.YELLOW}"))
+    try:
+        x = int(input(f"{Fore.MAGENTA}1. Login\n2. Sign Up\n3. Quit\n{Fore.YELLOW}"))
+    except:
+        print(f"{Fore.RED}Invalid option\n")
+        continue
+    
     # login
     if x == 1:
         usr = input(f"{Fore.CYAN}Enter user name: ")
@@ -644,7 +651,6 @@ while not success:
             if (sha256_crypt.verify(pwd, password)):
                 success = True
                 server.sendall(bytes("y", 'utf-8'))
-                # public_key_str = server.recv(int(server.recv(4).decode('utf-8')))
                 private_key_str = server.recv(
                     int(server.recv(4).decode('utf-8'))).decode('utf-8')
 
@@ -655,8 +661,10 @@ while not success:
             else:
                 server.sendall(bytes("n", 'utf-8'))
                 print(f"{Fore.RED}Invalid username or password\n")
-        else:
+        elif user_found == "n":
             print(f"{Fore.RED}Invalid username or password\n")
+        else:
+            print(f"{Fore.RED}Already logged in at another screen\n")
 
     # signup
     elif x == 2:
@@ -748,6 +756,10 @@ if num_msgs > 0:
             myfile.close()
             counter+= 1
         elif code == "gn":
+            g_pvt_key_str = server.recv(int(server.recv(4).decode('utf-8'))).decode('utf-8')
+            g_pvt_key_str = cryptocode.decrypt(g_pvt_key_str, pwd)
+            g_prvt_key = RSA.importKey(g_pvt_key_str.encode())
+            g_prvt_key = PKCS1_OAEP.new(g_prvt_key)
             user = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
             grp = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
             size = int(server.recv(4).decode('utf-8'))
@@ -755,13 +767,17 @@ if num_msgs > 0:
             msg = []
             for i in range(iter):
                 data = server.recv(128)
-                msg.append(prvt_key.decrypt(data))
+                msg.append(g_prvt_key.decrypt(data))
             if not size%86 == 0:
                 data = server.recv(128)
-                msg.append(prvt_key.decrypt(data))
+                msg.append(g_prvt_key.decrypt(data))
             message = b''.join(msg)
-            print(Fore.RED + "<Group: " + grp + "> " + "<User: " + user + "> " + msg)
+            print(Fore.RED + "<Group: " + grp + "> " + "<User: " + user + "> " + message.decode('utf-8'))
         elif code == "gy":     
+            g_pvt_key_str = server.recv(int(server.recv(4).decode('utf-8'))).decode('utf-8')
+            g_pvt_key_str = cryptocode.decrypt(g_pvt_key_str, pwd)
+            g_prvt_key = RSA.importKey(g_pvt_key_str.encode())
+            g_prvt_key = PKCS1_OAEP.new(g_prvt_key)
             user = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
             grp = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
             ext = server.recv(int(server.recv(1).decode('utf-8'))).decode('utf-8')
@@ -770,18 +786,37 @@ if num_msgs > 0:
             msg = []
             for i in range(iter):
                 data = server.recv(128)
-                msg.append(prvt_key.decrypt(data))
+                msg.append(g_prvt_key.decrypt(data))
             if not size%86 == 0:
                 data = server.recv(128)
-                msg.append(prvt_key.decrypt(data))
+                msg.append(g_prvt_key.decrypt(data))
             message = b''.join(msg)
             print(Fore.RED + "<Group: " + grp + "> " + "<User: " + user + "> " + "Sent a file which is placed at " + f"__received__{usr}__/{grp}_{user}_{counter}{ext}")
             if not os.path.exists(f"__received__{usr}__"):
                 os.makedirs(f"__received__{usr}__")
             myfile = open(f"__received__{usr}__/{grp}_{user}_{counter}{ext}", 'wb')
-            myfile.write(msg)
+            myfile.write(message)
             myfile.close()
             counter+= 1
+        elif code == "gk":
+            grp = server.recv(int(server.recv(3).decode('utf-8'))).decode('utf-8')
+            size = int(server.recv(4).decode('utf-8'))
+            iter = size//86
+            msg=[]
+            for i in range(iter):
+                data = server.recv(128)
+                msg.append(prvt_key.decrypt(data))
+            if not size%86 == 0:
+                data = server.recv(128)
+                msg.append(prvt_key.decrypt(data))
+            p_key = b''.join(msg)
+            enc_grp_pvt_key = cryptocode.encrypt(p_key.decode(), pwd)
+            to_send = "{}:{}:".format("gk", grp).ljust(512, '0').encode('utf-8')
+            server.sendall(to_send)
+            server.sendall(str(len(enc_grp_pvt_key)).zfill(4).encode('utf-8'))
+            server.sendall(enc_grp_pvt_key.encode('utf-8'))
+            print(Fore.GREEN + f"You were added to group: {grp}")
+
     print()
 
 thread1 = threading.Thread(target=receiving_func, args=())

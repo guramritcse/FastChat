@@ -133,6 +133,8 @@ def letsconnect(ip, port):
                 username_conn[to_usr].sendall(elem)
 
         elif code == "wg":
+            pvt_key = conn.recv(
+                int(conn.recv(4).decode('utf-8')))
             to_usr = conn.recv(
                 int(conn.recv(3).decode('utf-8'))).decode('utf-8')
             from_user = conn.recv(
@@ -151,17 +153,23 @@ def letsconnect(ip, port):
             uss_conn = username_conn[to_usr]
             uss_conn.sendall("g".encode('utf-8'))
 
+            uss_conn.sendall(str(len(pvt_key)).zfill(4).encode('utf-8'))
+            uss_conn.sendall(pvt_key)
+
             uss_conn.sendall(str(len(from_user)).zfill(3).encode('utf-8'))
             uss_conn.sendall(from_user.encode('utf-8'))
 
             uss_conn.sendall(str(len(to_grp)).zfill(3).encode('utf-8'))
             uss_conn.sendall(to_grp.encode('utf-8'))
 
-            username_conn[to_usr].sendall(str(size).zfill(4).encode('utf-8'))
+            uss_conn.sendall(str(size).zfill(4).encode('utf-8'))
             for elem in msg:
-                username_conn[to_usr].sendall(elem)
+                uss_conn.sendall(elem)
 
         elif code == "ig":
+            pvt_key = conn.recv(
+                int(conn.recv(4).decode('utf-8')))
+
             to_usr = conn.recv(
                 int(conn.recv(3).decode('utf-8'))).decode('utf-8')
 
@@ -181,6 +189,8 @@ def letsconnect(ip, port):
                 msg.append(conn.recv(128))
 
             username_conn[to_usr].sendall('a'.encode('utf-8'))
+            username_conn[to_usr].sendall(str(len(pvt_key)).zfill(4).encode('utf-8'))
+            username_conn[to_usr].sendall(pvt_key)
             username_conn[to_usr].sendall(str(len(from_user)).zfill(3).encode('utf-8'))
             username_conn[to_usr].sendall(from_user.encode('utf-8'))
             username_conn[to_usr].sendall(str(len(to_grp)).zfill(3).encode('utf-8'))
@@ -214,13 +224,6 @@ def letsconnect(ip, port):
             for elem in msg:
                 username_conn[to_usr].sendall(elem)
             
-            grp_pvt_len = conn.recv(4)
-            grp_pvt_key = conn.recv(
-                int(grp_pvt_len.decode('utf-8')))
-            print(grp_pvt_len, grp_pvt_key)
-            conn.sendall(grp_pvt_len)
-            conn.sendall(grp_pvt_key)
-            print("sent")
        
 for i in SERVER_POOL:
     if i[1] < Port:
@@ -232,7 +235,7 @@ def clientthread(conn, addr):
     global lb, fellow_servers, username_conn
     serv_connected = ''
     if (conn.recv(1).decode('utf-8') == "c"):
-        to_remove= "DELETE FROM IND_MSG WHERE TIME < NOW() - INTERVAL '2 HOURS' "
+        to_remove= "DELETE FROM IND_MSG WHERE TIME < NOW() - INTERVAL '2 HOURS' AND (EXTENSION IS NULL OR EXTENSION != 'GROUP KEY') "
         cur.execute(to_remove)
         dbconn.commit()
 
@@ -283,6 +286,8 @@ def clientthread(conn, addr):
             else:
                 if e[5]==None:
                     conn.sendall("gn".encode('utf-8'))
+                    conn.sendall(str(len(bytes(e[7]))).zfill(4).encode('utf-8'))
+                    conn.sendall(bytes(e[7]))
                     conn.sendall(str(len(e[0])).zfill(3).encode('utf-8'))
                     conn.sendall(e[0].encode('utf-8'))
                     conn.sendall(str(len(e[4])).zfill(3).encode('utf-8'))
@@ -297,8 +302,26 @@ def clientthread(conn, addr):
                     if not size%86 == 0:
                         data = bytes(e[3][iter*128:])
                         conn.sendall(data)
+
+                elif e[5]=='GROUP KEY':
+                    conn.sendall("gk".encode('utf-8'))
+                    conn.sendall(str(len(e[4])).zfill(3).encode('utf-8'))
+                    conn.sendall(e[4].encode('utf-8'))
+                    conn.sendall(str(e[6]).zfill(4).encode('utf-8'))
+                    size = int(e[6])
+                    iter = size//86
+                    for i in range(iter):
+                        data = bytes(e[3][i*128:(i+1)*128])
+                        conn.sendall(data)
+
+                    if not size%86 == 0:
+                        data = bytes(e[3][iter*128:])
+                        conn.sendall(data)
+
                 else:
                     conn.sendall("gy".encode('utf-8'))
+                    conn.sendall(str(len(bytes(e[7]))).zfill(4).encode('utf-8'))
+                    conn.sendall(bytes(e[7]))
                     conn.sendall(str(len(e[0])).zfill(3).encode('utf-8'))
                     conn.sendall(e[0].encode('utf-8'))
                     conn.sendall(str(len(e[4])).zfill(3).encode('utf-8'))
@@ -307,6 +330,7 @@ def clientthread(conn, addr):
                     conn.sendall(e[5].encode('utf-8'))
                     conn.sendall(str(len(e[6])).zfill(2).encode('utf-8'))
                     conn.sendall(e[6].encode('utf-8'))
+                    size = int(e[6])
                     iter = size//86
                     for i in range(iter):
                         data = bytes(e[3][i*128:(i+1)*128])
@@ -332,7 +356,27 @@ def clientthread(conn, addr):
                 message = message.split(":")
                 code = message[0]
 
-                if code == "cg":
+                if code == "gk":
+                    grp_name = message[1]
+                    grp_pvt_len = conn.recv(4)
+                    grp_pvt_key = conn.recv(int(grp_pvt_len.decode('utf-8')))
+                    find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' "
+                    cur.execute(find_grp)
+                    entry_grp = cur.fetchone()
+                    num_present = entry_grp[23]
+                    index=-1
+                    try:
+                        index = entry_grp[24:].index(username)
+                    except:
+                        index=-1
+                    if index!=-1:
+                        column = "pvt_key"+f"{index+1}"
+                        update_query = f"UPDATE GROUPS SET {column} = decode('{grp_pvt_key.hex()}', 'hex') WHERE NAME = '{grp_name}' "
+                        cur.execute(update_query)
+                        dbconn.commit()
+
+
+                elif code == "cg":
                     grp_name = message[1]
                     find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' "
                     cur.execute(find_grp)
@@ -348,7 +392,7 @@ def clientthread(conn, addr):
                         # Need to get the public key of the fellow
                         lb.sendall("cg".encode('utf-8'))
 
-                        lb.sendall(str(len(ind_name)).zfill(3).encode('utf-8'))
+                        lb.sendall(str(len(grp_name)).zfill(3).encode('utf-8'))
                         lb.sendall(grp_name.encode('utf-8'))
 
                         len_key = int(lb.recv(4).decode('utf-8'))
@@ -447,7 +491,7 @@ def clientthread(conn, addr):
                             out = "l".encode('utf-8')  # lim-exc.
                             conn.sendall(out)
 
-                        elif ind_name in entry_grp[3:]:
+                        elif ind_name in entry_grp[24:]:
                             out = "t".encode('utf-8')  # al-pre.
                             conn.sendall(out)
 
@@ -503,30 +547,11 @@ def clientthread(conn, addr):
                                     for elem in msg:
                                         username_conn[ind_name].sendall(elem)
 
-                                    grp_pvt_len = username_conn[ind_name].recv(4)
-                                    print("hello")
-                                    print(grp_pvt_len)
-                                    print(grp_pvt_len.decode('utf-8'))
-                                    grp_pvt_key = username_conn[ind_name].recv(int(grp_pvt_len.decode('utf-8')))
-                                    print("rcvd")
-
-                                    column1 = "member"+f"{num_present+1}"
-                                    column2 = "pvt_key"+f"{num_present+1}"
-                                    update_query = f"UPDATE GROUPS SET {column1} = '{ind_name}', number = number + 1, {column2} = decode('{grp_pvt_key.hex()}', 'hex') WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
-                                    cur.execute(update_query)
-                                    dbconn.commit()
-
-                                    print("done")
-
                                 elif (serv_connected == "n"):
                                     # check table
-                                    column = "member"+f"{num_present+1}"
-                                    update_query = f"UPDATE GROUPS SET {column} = '{ind_name}', number = number + 1  WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
-                                    cur.execute(update_query)
-                                    dbconn.commit()
                                     dt= datetime.datetime.now()
                                     to_store = b''.join(msg)
-                                    postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, TIME, MESSAGE, GROUP, EXT, SIZE) VALUES ('{username}', '{ind_name}', '{dt}', decode('{to_store.hex()}', 'hex'), '{grp_name}' ,'GROUP KEY' ,{str(size)});'''
+                                    postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, TIME, MESSAGE, GRP, EXTENSION, SIZE) VALUES ('{username}', '{ind_name}', '{dt}', decode('{to_store.hex()}', 'hex'), '{grp_name}' ,'GROUP KEY' , {str(size)});'''
                                     cur.execute(postgres_insert_query)
                                     dbconn.commit()
 
@@ -546,15 +571,11 @@ def clientthread(conn, addr):
                                     for elem in msg:
                                         serv_conn.sendall(elem)
 
-                                    grp_pvt_len = serv_conn.recv(4)
-                                    grp_pvt_key = serv_conn.recv(int(grp_pvt_len.decode('utf-8')))
 
-                                    column1 = "member"+f"{num_present+1}"
-                                    column2 = "pvt_key"+f"{num_present+1}"
-                                    update_query = f"UPDATE GROUPS SET {column1} = '{ind_name}', number = number + 1, {column2} = decode('{grp_pvt_key.hex()}', 'hex') WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
-                                    cur.execute(update_query)
-                                    dbconn.commit()
-
+                                column = "member"+f"{num_present+1}"
+                                update_query = f"UPDATE GROUPS SET {column} = '{ind_name}', number = number + 1  WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                                cur.execute(update_query)
+                                dbconn.commit()
                                 conn.sendall("y".encode('utf-8'))
 
                             except:
@@ -569,14 +590,16 @@ def clientthread(conn, addr):
                     ind_name = message[2]
 
                     try:
-                        index = entry_grp[4:].index(ind_name)
-                        num_present = entry_grp[2]
+                        index = entry_grp[25:].index(ind_name)
+                        num_present = entry_grp[23]
                         column1 = "member"+f"{index+2}"
                         column2 = "member"+f"{num_present}"
-                        update_query = f"UPDATE GROUPS SET {column1} = {column2}, NUMBER = {num_present-1} WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                        column3 = "pvt_key"+f"{index+2}"
+                        column4 = "pvt_key"+f"{num_present}"
+                        update_query = f"UPDATE GROUPS SET {column1} = {column2}, {column3} = {column4}, NUMBER = {num_present-1} WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
                         cur.execute(update_query)
                         dbconn.commit()
-                        update_query = f"UPDATE GROUPS SET {column2} = NULL WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
+                        update_query = f"UPDATE GROUPS SET {column2} = NULL, {column4} = NULL WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
                         cur.execute(update_query)
                         dbconn.commit()
                         out = "y".encode('utf-8')  # pre.
@@ -619,9 +642,16 @@ def clientthread(conn, addr):
                         entry_grp = cur.fetchone()
 
 
-                        for to_usr in entry_grp[3:3 + entry_grp[2]]:
+                        for to_usr in entry_grp[24:24 + entry_grp[23]]:
                             if to_usr == username:
                                 continue
+
+                            index=entry_grp[24:24 + entry_grp[23]].index(to_usr)
+                            if entry_grp[3+index] == None:
+                                continue
+
+                            pvt_key=bytes(entry_grp[3+index])
+                            
 
                             lb.sendall("cs".encode('utf-8'))
                             lb.sendall(str(len(to_usr)).zfill(3).encode('utf-8'))
@@ -634,6 +664,12 @@ def clientthread(conn, addr):
                             if (serv_connected == f"('{IP_address}', {Port})"):
                                 # Recieving user is active
                                 username_conn[to_usr].sendall('g'.encode('utf-8'))
+
+                                username_conn[to_usr].sendall(
+                                    str(len(pvt_key)).zfill(4).encode('utf-8'))
+
+                                username_conn[to_usr].sendall(
+                                    pvt_key)
 
                                 username_conn[to_usr].sendall(
                                     str(len(username)).zfill(3).encode('utf-8'))
@@ -654,15 +690,23 @@ def clientthread(conn, addr):
 
                             elif serv_connected == "n" :
                                 # check table
-                                # postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE, GRP) VALUES ('{username}', '{to_usr}', '{msg.decode('utf-8')}', '{grp_name}');'''
                                 dt= datetime.datetime.now()
-                                postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, TIME, MESSAGE, GRP, SIZE) VALUES ('{username}', '{to_usr}', '{dt}', decode('{bytes(msg).hex()}', 'hex'), '{grp_name}', {str(size)});'''
+                                to_store = b''.join(msg)
+                                print(to_store)
+                                postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, TIME, MESSAGE, GRP, SIZE, PVT_KEY) VALUES ('{username}', '{to_usr}', '{dt}', decode('{to_store.hex()}', 'hex'), '{grp_name}', {str(size)}, decode('{pvt_key.hex()}', 'hex'));'''
                                 cur.execute(postgres_insert_query)
                                 dbconn.commit()
 
                             else:
                                 serv_conn = fellow_servers[serv_connected]
                                 serv_conn.sendall("wg".encode('utf-8'))
+
+                                serv_conn.sendall(
+                                    str(len(pvt_key)).zfill(4).encode('utf-8'))
+
+                                serv_conn.sendall(
+                                    pvt_key)
+
                                 serv_conn.sendall(
                                     str(len(to_usr)).zfill(3).encode('utf-8')
                                 )
@@ -682,7 +726,8 @@ def clientthread(conn, addr):
                                     serv_conn.sendall(elem)
 
                         conn.sendall("y".encode('utf-8'))
-                    except:
+                    except Exception as e: 
+                        print(e)
                         conn.sendall("n".encode('utf-8'))
 
                 elif code=="ig":
@@ -706,13 +751,19 @@ def clientthread(conn, addr):
                         cur.execute(find_grp)
                         entry_grp = cur.fetchone()
 
-                        for to_usr in entry_grp[3:3 + entry_grp[2]]:
+                        for to_usr in entry_grp[24:24 + entry_grp[23]]:
                             if to_usr == username:
                                 continue
 
+                            index=entry_grp[24:24 + entry_grp[23]].index(to_usr)
+                            if entry_grp[3+index] == None:
+                                continue
+                            
+                            pvt_key=bytes(entry_grp[3+index])
+
                             lb.sendall("cs".encode('utf-8'))
-                            lb.sendall(str(len(ind_name)).zfill(3).encode('utf-8'))
-                            lb.sendall(ind_name.encode('utf-8'))
+                            lb.sendall(str(len(to_usr)).zfill(3).encode('utf-8'))
+                            lb.sendall(to_usr.encode('utf-8'))
                             ip_len = int(lb.recv(3).decode('utf-8'))
                             serv_connected = lb.recv(ip_len).decode('utf-8')
                             print(serv_connected)
@@ -720,9 +771,11 @@ def clientthread(conn, addr):
                             if (serv_connected == f"('{IP_address}', {Port})"):
                                 # Recieving user is active
                                 username_conn[to_usr].sendall('a'.encode('utf-8'))
-                                username_conn[to_usr].sendall(str(len(to_usr)).zfill(2).encode('utf-8'))
+                                username_conn[to_usr].sendall(str(len(pvt_key)).zfill(4).encode('utf-8'))
+                                username_conn[to_usr].sendall(pvt_key)
+                                username_conn[to_usr].sendall(str(len(to_usr)).zfill(3).encode('utf-8'))
                                 username_conn[to_usr].sendall(to_usr.encode('utf-8'))
-                                username_conn[to_usr].sendall(str(len(grp_name)).zfill(2).encode('utf-8'))
+                                username_conn[to_usr].sendall(str(len(grp_name)).zfill(3).encode('utf-8'))
                                 username_conn[to_usr].sendall(grp_name.encode('utf-8'))
                                 username_conn[to_usr].sendall(str(len(ext)).zfill(1).encode('utf-8'))
                                 username_conn[to_usr].sendall(ext.encode('utf-8'))
@@ -734,13 +787,17 @@ def clientthread(conn, addr):
                             elif (serv_connected == "n"):
                                 # check table
                                 dt= datetime.datetime.now()
-                                postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, TIME, MESSAGE, GRP, EXTENSION, SIZE) VALUES ('{to_usr}', '{to_usr}', '{dt}', decode('{bytes(msg).hex()}', 'hex'), '{grp_name}', '{ext}', {str(size)});'''
+                                to_store = b''.join(msg)
+                                postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, TIME, MESSAGE, GRP, EXTENSION, SIZE, PVT_KEY) VALUES ('{username}', '{to_usr}', '{dt}', decode('{bytes(to_store).hex()}', 'hex'), '{grp_name}', '{ext}', {str(size)}, decode('{pvt_key.hex()}', 'hex'));'''
                                 cur.execute(postgres_insert_query)
                                 dbconn.commit()
 
                             else:
                                 serv_conn = fellow_servers[serv_connected]
                                 serv_conn.sendall("ig".encode('utf-8'))
+
+                                serv_conn.sendall(str(len(pvt_key)).zfill(4).encode('utf-8'))
+                                serv_conn.sendall(pvt_key)
 
                                 serv_conn.sendall(str(len(to_usr)).zfill(3).encode('utf-8'))
                                 serv_conn.sendall(to_usr.encode('utf-8'))
@@ -799,14 +856,9 @@ def clientthread(conn, addr):
                             for elem in msg:
                                 username_conn[to_usr].sendall(elem)
 
-                            # username_conn[to_usr].sendall(
-                            #     str(len(msg)).zfill(4).encode('utf-8'))
-
-                            # username_conn[to_usr].sendall(msg)
 
                         elif (serv_connected == "n"):
                             # check table
-                            # postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, MESSAGE) VALUES ('{username}', '{to_usr}', decode('{msg.hex()}', 'hex'));'''
                             dt= datetime.datetime.now()
                             to_store = b''.join(msg)
                             postgres_insert_query = f'''INSERT INTO IND_MSG (SENDER, RECEIVER, TIME, MESSAGE, SIZE) VALUES ('{username}', '{to_usr}', '{dt}', decode('{to_store.hex()}', 'hex'), {str(size)});'''
@@ -817,15 +869,10 @@ def clientthread(conn, addr):
                         else:
                             serv_conn = fellow_servers[serv_connected]
                             serv_conn.sendall("wi".encode('utf-8'))
-                            serv_conn.sendall(
-                                str(len(to_usr)).zfill(3).encode('utf-8')
-                            )
+                            serv_conn.sendall(str(len(to_usr)).zfill(3).encode('utf-8'))
                             serv_conn.sendall(to_usr.encode('utf-8'))
-
-                            serv_conn.sendall(
-                                str(len(username)).zfill(3).encode('utf-8'))
+                            serv_conn.sendall(str(len(username)).zfill(3).encode('utf-8'))
                             serv_conn.sendall(username.encode('utf-8'))
-
                             serv_conn.sendall(str(size).zfill(4).encode('utf-8'))
                             for elem in msg:
                                 serv_conn.sendall(elem)
@@ -968,8 +1015,10 @@ def clientthread(conn, addr):
                     username_conn[to_usr].sendall(elem)
 
             elif code == "wg":
+                pvt_key = conn.recv(
+                int(conn.recv(4).decode('utf-8')))
                 to_usr = conn.recv(
-                int(conn.recv(3).decode('utf-8'))).decode('utf-8')
+                    int(conn.recv(3).decode('utf-8'))).decode('utf-8')
                 from_user = conn.recv(
                     int(conn.recv(3).decode('utf-8'))).decode('utf-8')
                 to_grp = conn.recv(
@@ -986,17 +1035,23 @@ def clientthread(conn, addr):
                 uss_conn = username_conn[to_usr]
                 uss_conn.sendall("g".encode('utf-8'))
 
+                uss_conn.sendall(str(len(pvt_key)).zfill(4).encode('utf-8'))
+                uss_conn.sendall(pvt_key)
+
                 uss_conn.sendall(str(len(from_user)).zfill(3).encode('utf-8'))
                 uss_conn.sendall(from_user.encode('utf-8'))
 
                 uss_conn.sendall(str(len(to_grp)).zfill(3).encode('utf-8'))
                 uss_conn.sendall(to_grp.encode('utf-8'))
 
-                username_conn[to_usr].sendall(str(size).zfill(4).encode('utf-8'))
+                uss_conn.sendall(str(size).zfill(4).encode('utf-8'))
                 for elem in msg:
-                    username_conn[to_usr].sendall(elem)
+                    uss_conn.sendall(elem)
 
             elif code == "ig":
+                pvt_key = conn.recv(
+                int(conn.recv(4).decode('utf-8')))
+
                 to_usr = conn.recv(
                     int(conn.recv(3).decode('utf-8'))).decode('utf-8')
 
@@ -1016,6 +1071,8 @@ def clientthread(conn, addr):
                     msg.append(conn.recv(128))
 
                 username_conn[to_usr].sendall('a'.encode('utf-8'))
+                username_conn[to_usr].sendall(str(len(pvt_key)).zfill(4).encode('utf-8'))
+                username_conn[to_usr].sendall(pvt_key)
                 username_conn[to_usr].sendall(str(len(from_user)).zfill(3).encode('utf-8'))
                 username_conn[to_usr].sendall(from_user.encode('utf-8'))
                 username_conn[to_usr].sendall(str(len(to_grp)).zfill(3).encode('utf-8'))
@@ -1048,14 +1105,6 @@ def clientthread(conn, addr):
                 username_conn[to_usr].sendall(str(size).zfill(4).encode('utf-8'))
                 for elem in msg:
                     username_conn[to_usr].sendall(elem)
-                
-                grp_pvt_len = conn.recv(4)
-                grp_pvt_key = conn.recv(
-                    int(grp_pvt_len.decode('utf-8')))
-                print(grp_pvt_len, grp_pvt_key)
-                conn.sendall(grp_pvt_len)
-                conn.sendall(grp_pvt_key)
-                print("sent")
 
 
 """The following function simply removes the object
