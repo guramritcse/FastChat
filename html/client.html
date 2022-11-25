@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>client module &mdash; FastChat  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="loadbalancer module" href="loadbalancer.html" />
+    <link rel="prev" title="FastChat" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> FastChat
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">FastChat</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">client module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="loadbalancer.html">loadbalancer module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server.html">server module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FastChat</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="modules.html">FastChat</a> &raquo;</li>
+      <li>client module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/client.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-client">
+<span id="client-module"></span><h1>client module<a class="headerlink" href="#module-client" title="Permalink to this headline"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="client.main">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#client.main" title="Permalink to this definition"></a></dt>
+<dd><p>This is the main function
+Firstly, a socket connection is initiated between loadbalancer and client, when the user logs in, a server is alloted to it.
+Client disconnects its connection with the loadbalancer and a socket connection is initiated between the client and the server alloted to it
+All the messages received by the client while it was offline are displayed and receiving and sending threads are initiated.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.receiving_func">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">receiving_func</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#client.receiving_func" title="Permalink to this definition"></a></dt>
+<dd><p>It is thread for receiving information from the server
+Depending on the code received from the server, the parameters will be changed accordingly.
+The codes received from the server have the following meaning:</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. c: Receive another code from the server</div>
+<div class="line">2. y: Message has been sent successfully</div>
+<div class="line">3. n: Unable to send direct message</div>
+<div class="line">4. l: Group is full and hence no further member can be added</div>
+<div class="line">5. t: User exists already in the group</div>
+<div class="line">6. e: Receiving public key of receiver</div>
+<div class="line">7. k: Receiving private key of group</div>
+<div class="line">8. p: Decrypting group private key using private key of user</div>
+<div class="line">9. s: Server is going to send the usernames of all the members of the group to the admin</div>
+<div class="line">10. u: Have to encrypt the message of sender using the public key of receiver sent by server and have to send it back to the server</div>
+<div class="line">11. g: Have to encrypt the message of sender using the public key of group sent by server and send the encrypted message back to server</div>
+<div class="line">12. a: Received an image file</div>
+<div class="line">13. b: Sent an image file</div>
+<div class="line">14. q: Client has logged out</div>
+</div>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="client.user_interface">
+<span class="sig-prename descclassname"><span class="pre">client.</span></span><span class="sig-name descname"><span class="pre">user_interface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">display_menu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#client.user_interface" title="Permalink to this definition"></a></dt>
+<dd><p>Function to display the user interface
+It is the thread for sending information to the server
+Different user intefaces are displayed as per the value of the display_menu parameter
+The parameter display_menu can take the following values and the following options are displayed as per the value of the display_menu:</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. display_menu = 0 : Main Menu</div>
+</div>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. g: for managing groups</div>
+<div class="line">2. b: to send group message</div>
+<div class="line">3. d: to send direct message</div>
+<div class="line">4. l: to logout</div>
+</div>
+</div></blockquote>
+<div class="line-block">
+<div class="line">2. display_menu = 1 : Group Settings</div>
+</div>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. n: to create a new group</div>
+<div class="line">2. m: to manage an existing group</div>
+<div class="line">3. q: to go to previous menu</div>
+</div>
+</div></blockquote>
+<div class="line-block">
+<div class="line">3. display_menu = 2 : Manage Existing Group</div>
+</div>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. a: to add a new member</div>
+<div class="line">2. r: to remove a member</div>
+<div class="line">3. s: to see all members in the group</div>
+<div class="line">4. q: to go to previous menu</div>
+</div>
+</div></blockquote>
+<div class="line-block">
+<div class="line">4. display_menu = 3 : Group message</div>
+</div>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. t: to type a message</div>
+<div class="line">2. i: to send an image or text file</div>
+<div class="line">3: q: to go to previous menu</div>
+</div>
+</div></blockquote>
+<div class="line-block">
+<div class="line">5. display_menu = 4 : Direct message</div>
+</div>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. t: to type a message</div>
+<div class="line">2. i: to send an image or text file</div>
+<div class="line">3. q: to go to previous menu</div>
+</div>
+</div></blockquote>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>display_menu</strong> (<em>int</em>) – contains information about which display menu is to be shown</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="FastChat" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="loadbalancer.html" class="btn btn-neutral float-right" title="loadbalancer module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Thrice as Nice.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

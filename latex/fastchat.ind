@@ -1,0 +1,46 @@
+\begin{sphinxtheindex}
+\let\bigletter\sphinxstyleindexlettergroup
+\let\spxpagem \sphinxstyleindexpagemain
+\let\spxentry \sphinxstyleindexentry
+\let\spxextra \sphinxstyleindexextra
+
+  \bigletter C
+  \item \spxentry{client}
+    \subitem \spxentry{module}, \hyperpage{1}
+  \item \spxentry{clientthread()}\spxextra{in module loadbalancer}, \hyperpage{2}
+  \item \spxentry{clientthread()}\spxextra{in module server}, \hyperpage{3}
+
+  \indexspace
+  \bigletter L
+  \item \spxentry{least\_connection()}\spxextra{in module loadbalancer}, \hyperpage{3}
+  \item \spxentry{letsconnect()}\spxextra{in module server}, \hyperpage{4}
+  \item \spxentry{loadbalancer}
+    \subitem \spxentry{module}, \hyperpage{2}
+
+  \indexspace
+  \bigletter M
+  \item \spxentry{main()}\spxextra{in module client}, \hyperpage{1}
+  \item \spxentry{main()}\spxextra{in module loadbalancer}, \hyperpage{3}
+  \item \spxentry{main()}\spxextra{in module server}, \hyperpage{4}
+  \item \spxentry{module}
+    \subitem \spxentry{client}, \hyperpage{1}
+    \subitem \spxentry{loadbalancer}, \hyperpage{2}
+    \subitem \spxentry{server}, \hyperpage{3}
+
+  \indexspace
+  \bigletter R
+  \item \spxentry{receiving\_func()}\spxextra{in module client}, \hyperpage{1}
+  \item \spxentry{remove()}\spxextra{in module server}, \hyperpage{4}
+  \item \spxentry{round\_robin()}\spxextra{in module loadbalancer}, \hyperpage{3}
+
+  \indexspace
+  \bigletter S
+  \item \spxentry{select\_server()}\spxextra{in module loadbalancer}, \hyperpage{3}
+  \item \spxentry{server}
+    \subitem \spxentry{module}, \hyperpage{3}
+
+  \indexspace
+  \bigletter U
+  \item \spxentry{user\_interface()}\spxextra{in module client}, \hyperpage{1}
+
+\end{sphinxtheindex}
