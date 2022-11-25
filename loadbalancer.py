@@ -13,7 +13,6 @@ from itertools import cycle
 from _thread import *
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 # checks whether sufficient arguments have been provided
 if len(sys.argv) != 3:
@@ -44,11 +43,12 @@ server.listen(150)
 # List of servers I have
 SERVER_POOL = [('127.0.0.1', 8000), ('127.0.0.1', 8001), ('127.0.0.1', 8002)]
 
+# connecting to database
 dbconn = psycopg2.connect(database="fastchat", user="postgres",
                           password="", host="127.0.0.1", port="5432")
 cur = dbconn.cursor()
 
-#creating the databases
+#creating the tables if not already present
 
 cur.execute('''CREATE TABLE IF NOT EXISTS CREDENTIALS
       (USERNAME VARCHAR(50) PRIMARY KEY NOT NULL,
@@ -158,7 +158,7 @@ def least_connection(server_list):
     return to_select
 
 
-#function deciding what algorithm to use for selecting server for next incoming client
+# function deciding what algorithm to use for selecting server for next incoming client
 def select_server(server_list, algorithm):
     global num_conn
     #selecting server at random
@@ -256,7 +256,6 @@ def clientthread(conn, addr):
             inp = conn.recv(1024)
             inp = inp.decode('utf-8')
             if (inp == "quit"):
-                # remove(conn)
                 return
             inp = inp.split(":")
             username = inp[1]
@@ -282,7 +281,6 @@ def clientthread(conn, addr):
                     user_keys[username] = (pvt_key, pub_key)
 
                     # have to delete the entry into public_key
-                    # postgres_insert_query = f'''INSERT INTO CREDENTIALS (USERNAME, PASSWORD, PUBLIC_KEY, PVT_KEY) VALUES ('{inp[1]}', '{inp[2]}','{public_key}', '{pvt_key}');'''
                     postgres_insert_query = f'''INSERT INTO CREDENTIALS (USERNAME, PASSWORD, PUB_KEY, PVT_KEY) VALUES ('{inp[1]}', '{inp[2]}', decode('{pub_key.hex()}', 'hex'), decode('{pvt_key.hex()}', 'hex'));'''
                     cur.execute(postgres_insert_query)
                     dbconn.commit()
