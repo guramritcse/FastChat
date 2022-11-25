@@ -20,11 +20,11 @@ import re
 from _thread import *
 lock = threading.Lock()
 
-#these are the allowed extensions
+# these are the allowed extensions
 allowed_ext = [".png", ".jpg", ".jpeg", ".txt"]
 counter = int(''.join(re.findall(r'\d+', str(datetime.datetime.utcnow()))))
 
-# these are the menus that rae to be displpayed
+# these are the menus that are to be displpayed
 menu_option = []
 menu_option.append(f"{Fore.GREEN}***** Main Menu *****\n{Fore.CYAN}Press {Fore.RED}'g' {Fore.CYAN}for managing groups\nPress {Fore.RED}'b' {Fore.CYAN}to send group message\nPress {Fore.RED}'d' {Fore.CYAN}to send direct message\nPress {Fore.RED}'l' {Fore.CYAN}to logout\n")
 menu_option.append(f"{Fore.GREEN}***** Group Settings *****\n{Fore.CYAN}Press {Fore.RED}'n' {Fore.CYAN}to create a new group\nPress {Fore.RED}'m' {Fore.CYAN}to manage an existing group\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n")
@@ -32,7 +32,7 @@ menu_option.append(f"{Fore.GREEN}***** Manage Existing Group *****\n{Fore.CYAN}P
 menu_option.append(f"{Fore.GREEN}***** Group message *****\n{Fore.CYAN}Press {Fore.RED}'t' {Fore.CYAN}to type a message\nPress {Fore.RED}'i' {Fore.CYAN}to send an image or text file\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n")
 menu_option.append(f"{Fore.GREEN}***** Direct message *****\n{Fore.CYAN}Press {Fore.RED}'t' {Fore.CYAN}to type a message\nPress {Fore.RED}'i' {Fore.CYAN}to send an image or text file\nPress {Fore.RED}'q' {Fore.CYAN}to go to previous menu\n")
 
-#menu for input options
+# menu for input options
 inp_option = []
 inp_option.append(f"{Fore.LIGHTMAGENTA_EX}Enter group name to manage: ")
 inp_option.append(
@@ -69,7 +69,7 @@ usr = ""
 
 last = -1
 
-#defining the user interface
+# defining the user interface
 def user_interface(display_menu=0):
     global confirm, last, to_public, prvt_key, grp_key_str, usr
     while (True):
@@ -100,7 +100,7 @@ def user_interface(display_menu=0):
                 # if message is sent
                 if (confirm == "y"):
                     confirm = "n"
-                    group = grp_name  # This line was added later
+                    group = grp_name
                     display_menu = 3
 
                 # in case no group is found
@@ -238,11 +238,10 @@ def user_interface(display_menu=0):
                 elif confirm == "t":
                     print(f"{Fore.RED}User already in group\n")
                 else:
-                    # set for all confirm messages
                     print(f"{Fore.RED}No user found\n")
                 lock.release()
                 if co == 1:
-                    #impoting public key in string format and transfering it
+                    # importing public key in string format and transfering it
                     public = RSA.importKey(to_public)
                     public = PKCS1_OAEP.new(public)
                     while (last == 1):
@@ -252,19 +251,19 @@ def user_interface(display_menu=0):
                     last = 1
                     lock.release()
                     size = len(grp_key_str)
-                    #sending encrypted group key string to server
+                    # sending encrypted group key string to server
                     server.sendall(str(size).zfill(4).encode('utf-8'))
                     iter = size//86
                     for i in range(iter):
                         data = public.encrypt(
                             grp_key_str[i*86:(i+1)*86].encode())
                         server.sendall(data)
-                    #dividing package into sizes to send to server
+                    # dividing package into sizes to send to server
                     if not size % 86 == 0:
                         data = public.encrypt(grp_key_str[iter*86:].encode())
                         server.sendall(data)
 
-                    #receiving message from server
+                    # receiving message from server
                     while (last == 1):
                         continue
                     lock.acquire()
@@ -299,11 +298,11 @@ def user_interface(display_menu=0):
                     confirm = "n"
                     print(f"{Fore.GREEN}User removed\n")
                 else:
-                    # admin cant be removed
+                    # admin can't be removed and also user not present in group can't be removed
                     print(f"{Fore.RED}No non-admin user found in group with given username\n")
                 lock.release()
 
-            #see all members of group only an admin pivelege
+            # see all members of group is only an admin pivelege
             elif choice == 's':
                 to_send = "{}:{}".format("sa", group).encode('utf-8')
                 server.sendall(to_send)
@@ -325,9 +324,9 @@ def user_interface(display_menu=0):
 
         #next display menu
         elif display_menu == 3:
-            #user chooses to type
+            # user chooses to type
             if choice == 't':
-                #sending text in group
+                # sending text in group
                 to_send = "wg:{}".format(group).encode('utf-8')
                 server.sendall(to_send)
                 msg = input(Fore.GREEN + "Please type your message:\n" + Fore.WHITE)
@@ -338,10 +337,11 @@ def user_interface(display_menu=0):
                 #if exceeded max length
                 if (len(to_send) > 2048):
                     print(f"{Fore.RED}Exceeded maximum length \nRetry\n")
+                    # abort
                     server.sendall("ab".encode('utf-8'))
                     continue
 
-                #sent code to server
+                #continue
                 server.sendall("co".encode('utf-8'))
                 size = len(msg)
                 server.sendall(str(size).zfill(4).encode('utf-8'))
@@ -602,7 +602,7 @@ def receiving_func():
             size = int(server.recv(4).decode('utf-8'))
             iter = size//86
             msg = []
-            #receiving private key of group and then encrypting it with own passord
+            #receiving private key of group, decrypting with it's private key and then encrypting it with own password and sending it back to server
             for i in range(iter):
                 data = server.recv(128)
                 msg.append(prvt_key.decrypt(data))
