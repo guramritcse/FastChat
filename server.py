@@ -48,6 +48,7 @@ server.listen(100)
 
 username_conn = {}
 
+# connecting to database
 dbconn = psycopg2.connect(database="fastchat", user="postgres",
                           password="", host="127.0.0.1", port="5432")
 cur = dbconn.cursor()
@@ -370,7 +371,7 @@ def clientthread(conn, addr):
                         data = bytes(e[3][iter*128:])
                         conn.sendall(data)
 
-        # deleting textx after they have been sent
+        # deleting messages after they have been sent
         to_do = f"DELETE FROM IND_MSG WHERE RECEIVER = '{username}'"
         cur.execute(to_do)
         dbconn.commit()
@@ -418,7 +419,7 @@ def clientthread(conn, addr):
                     cur.execute(find_grp)
                     entry = cur.fetchone()
                     conn.sendall("e".encode('utf-8'))
-                    # if a group with that name doesnt exist elready
+                    # if a group with that name doesn't already exist
                     if entry == None:
                         out = "n".encode('utf-8')
                         conn.sendall(out)
@@ -435,11 +436,7 @@ def clientthread(conn, addr):
                         out = "y".encode('utf-8')
                         conn.sendall(out)
 
-                        # while (lb_free == False):
-                        #     continue
                         lock.acquire()
-                        # lb_free = False
-                        # Need to get the public key of the fellow
                         lb.sendall("cg".encode('utf-8'))
 
                         lb.sendall(str(len(grp_name)).zfill(3).encode('utf-8'))
@@ -472,12 +469,7 @@ def clientthread(conn, addr):
                         out = "y".encode('utf-8')
                         conn.sendall(out)
 
-                        # while (lb_free == False):
-                        #     continue
                         lock.acquire()
-                        # lb_free = False
-
-                        # Need to get the public key of the fellow
                         lb.sendall("ci".encode('utf-8'))
 
                         lb.sendall(str(len(ind_name)).zfill(3).encode('utf-8'))
@@ -485,7 +477,6 @@ def clientthread(conn, addr):
 
                         len_key = int(lb.recv(4).decode('utf-8'))
                         keyofrecv = lb.recv(len_key)
-                        # lb_free = True
                         lock.release()
                         print("received key")
 
@@ -513,17 +504,13 @@ def clientthread(conn, addr):
                         postgres_insert_query = f"INSERT INTO GROUPS (NAME, ADMIN, PUB_KEY, PVT_KEY1, NUMBER, MEMBER1) VALUES ('{grp_name}', '{username}', decode('{pub_key.hex()}', 'hex'), decode('{pvt_key.hex()}', 'hex'), 1, '{username}')"
                         cur.execute(postgres_insert_query)
                         dbconn.commit()
-                        # while (lb_free == False):
-                        #     continue
                         lock.acquire()
-                        # lb_free = False
                         lb.sendall("ag".encode('utf-8'))
                         lb.sendall(str(len(grp_name)).zfill(3).encode('utf-8'))
                         lb.sendall(grp_name.encode('utf-8'))
                         lb.sendall(str(int(pub_len.decode('utf-8'))
                                        ).zfill(4).encode('utf-8'))
                         lb.sendall(pub_key)
-                        # lb_free = True
                         lock.release()
                         out = "y".encode('utf-8')
                         conn.sendall(out)
@@ -548,13 +535,13 @@ def clientthread(conn, addr):
                 # add indivudual in a group
                 elif code == "ai":
                     grp_name = message[1]
-                    #getting the database entry
+                    # getting the database entry
                     find_grp = f"SELECT * FROM GROUPS WHERE NAME = '{grp_name}' AND ADMIN = '{username}' "
                     cur.execute(find_grp)
-                    #getting the entry
+                    # getting the entry
                     entry_grp = cur.fetchone()
                     ind_name = message[2]
-                    #getting the credentials of the user to be added
+                    # getting the credentials of the user to be added
                     find_ind = f"SELECT * FROM CREDENTIALS WHERE USERNAME = '{ind_name}' "
                     cur.execute(find_ind)
                     entry_ind = cur.fetchone()
@@ -751,14 +738,12 @@ def clientthread(conn, addr):
 
                             index = entry_grp[24:24 +
                                               entry_grp[23]].index(to_usr)
+                            
+                            # send message only to those who have generated their group private key
                             if entry_grp[3+index] == None:
                                 continue
 
                             pvt_key = bytes(entry_grp[3+index])
-
-                            # while (lb_free == False):
-                            #     continue
-                            # lb_free = False
                             lock.acquire()
 
                             #getting the server connected to the client
@@ -891,6 +876,8 @@ def clientthread(conn, addr):
                             #getting the index
                             index = entry_grp[24:24 +
                                               entry_grp[23]].index(to_usr)
+                            
+                            # send message only to those who have generated their group private key
                             if entry_grp[3+index] == None:
                                 continue
 
@@ -904,7 +891,6 @@ def clientthread(conn, addr):
                             lb.sendall(to_usr.encode('utf-8'))
                             ip_len = int(lb.recv(3).decode('utf-8'))
                             serv_connected = lb.recv(ip_len).decode('utf-8')
-                            # lb_free = True
                             lock.release()
                             print(serv_connected)
 
@@ -993,7 +979,7 @@ def clientthread(conn, addr):
                         continue
                     # Updated the max limit of message
                     size = int(conn.recv(4).decode('utf-8'))
-                    #dividing a llong message into portions that can be sent
+                    #dividing a long message into portions that can be sent
                     iter = size//86
                     msg = []
                     for i in range(iter):
@@ -1002,16 +988,12 @@ def clientthread(conn, addr):
                         msg.append(conn.recv(128))
                     try:
                         # Need to get the public key of the fellow
-                        # while (lb_free == False):
-                        #     continue
                         lock.acquire()
-                        # lb_free = False
                         lb.sendall("cs".encode('utf-8'))
                         lb.sendall(str(len(ind_name)).zfill(3).encode('utf-8'))
                         lb.sendall(ind_name.encode('utf-8'))
                         ip_len = int(lb.recv(3).decode('utf-8'))
                         serv_connected = lb.recv(ip_len).decode('utf-8')
-                        # lb_free = True
                         lock.release()
                         print(serv_connected)
 
