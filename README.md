@@ -73,7 +73,7 @@ We implemented three different startegies to balance the load across the servers
 
 Apart from this load balancing method we also experimented with the type of messages that were being sent in the network. Those being,
 - Single client receiving messages from all the other clients.
-- Every client getting a message from every other client.
+- Each client getting a message from every other client.
 - Randomly sending messages between the existing clients.
 - Randomly switching between direct and group messaging between users that are online.
 - Sending Images combined with messages in all the above techniques.
@@ -88,9 +88,10 @@ To automate the above process we used "pwn" library that allows us to run multip
 3. In ascending order of ports start all the servers first using `python3 server.py 127.0.0.1 <port>` where port ranges from 8000 to 8002.
 4. Finally to start any client use `python3 client.py 127.0.0.1 7999`
 
-Apart from these file for performance analysis we created two other files, first being analyser.py and the other called calculator.py. Analyser.py is used to create log files automatically using above mentioned strategies whereas calculator.py is used to find the latency and throughput from the log files produced earlier. 
+Apart from these file for performance analysis we created two other files, first being analyser.py and the other called calculator.py. analyser.py is used to create log files automatically using above mentioned strategies whereas calculator.py is used to find the latency and throughput from the log files produced earlier. 
 
 To run the analyser.py file write `python3 analyser.py --c <number of clients> --m <messaging style> --i <y or n whether we want image or not>`
+To run the calculator.py file write `python3 calculator.py --c <number of clients> --g <y or n whether group message involved or not> --i <y or n whether image involved or not>`
 
 ## Team members' contributions
 **All the design techniques and coding strategies were discussed in group as a whole.**
