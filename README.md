@@ -65,11 +65,32 @@ The load balancer aims to reduce the load of each server by making sure each get
 - A user on successful login receives its private key from loadbalancer.
 This strategy works as each server is also connected to every other server of the network and whenever load balancer want to direct a message to some other server it is done by using those intra-server sockets.
 
+## Performance Analysis
+We implemented three different startegies to balance the load across the servers in the load balancer. Those being,
+- Round Robin Method : In a cyclic order assign each new client to the next server in the cycle.
+- Random Method : Randomly assign one server out of all the existing servers to the new client.
+- Least connection Method : Assign the server with the the least connections to the new incoming client.
+
+Apart from this load balancing method we also experimented with the type of messages that were being sent in the network. Those being,
+- Single client receiving messages from all the other clients.
+- Every client getting a message from every other client.
+- Randomly sending messages between the existing clients.
+- Randomly switching between direct and group messaging between users that are online.
+- Sending Images combined with messages in all the above techniques.
+
+While using any of the above strategy, we created log files containing timestamps for all the messages sent and received by the clients. Using those log files we computed latency and throughput and plotted the same on the graph.
+
+To automate the above process we used "pwn" library that allows us to run multiple processes from a single python file.
+
 ## Running the code files
 1. We have 3 servers and 1 loadbalancer in the code files available here
 2. Start loadbalancer in a terminal using `python3 loadbalancer.py 127.0.0.1 7999`
 3. In ascending order of ports start all the servers first using `python3 server.py 127.0.0.1 <port>` where port ranges from 8000 to 8002.
 4. Finally to start any client use `python3 client.py 127.0.0.1 7999`
+
+Apart from these file for performance analysis we created two other files, first being analyser.py and the other called calculator.py. Analyser.py is used to create log files automatically using above mentioned strategies whereas calculator.py is used to find the latency and throughput from the log files produced earlier. 
+
+To run the analyser.py file write `python3 analyser.py --c <number of clients> --m <messaging style> --i <y or n whether we want image or not>`
 
 ## Team members' contributions
 **All the design techniques and coding strategies were discussed in group as a whole.**
