@@ -7,6 +7,7 @@ from passlib.hash import sha256_crypt
 import rsa
 import cryptocode
 import random
+import re
 from itertools import cycle
 
 from _thread import *
@@ -18,6 +19,8 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 if len(sys.argv) != 3:
     print("Correct usage: script, IP address, port number")
     exit()
+
+file = open("logs.txt", "w")
 
 # takes the first argument from command prompt as IP address
 IP_address = str(sys.argv[1])
@@ -141,7 +144,7 @@ for selected_entry in all_entries:
     user_keys[selected_entry[0]] = (selected_entry[3], selected_entry[2])
 
 # Would store group's public key
-grp_keys={}
+grp_keys = {}
 cur.execute("SELECT * FROM GROUPS")
 all_entries = cur.fetchall()
 for selected_entry in all_entries:
@@ -149,22 +152,43 @@ for selected_entry in all_entries:
 
 
 ITER = cycle(SERVER_POOL)
-
+num_conn = {}
+for ser in SERVER_POOL:
+    num_conn[ser]=0
+    print(ser, num_conn, num_conn[ser])
 
 def round_robin(iter):
-    return next(iter)
+    global num_conn
+    to_select = next(iter)
+    num_conn[to_select] += 1
+    print(to_select)
+    return to_select
 
+def least_connection(server_list):
+    global num_conn
+    to_select = min(num_conn, key=num_conn.get)
+    num_conn[to_select] += 1
+    print(to_select)
+    return to_select
 
 def select_server(server_list, algorithm):
+    global num_conn
     if algorithm == 'random':
-        return random.choice(server_list)
+        to_select = random.choice(server_list)
+        print(to_select)
+        num_conn[to_select] += 1
+        return to_select
     elif algorithm == 'round robin':
         return round_robin(ITER)
+    elif algorithm == 'least connection':
+        return least_connection(server_list)
     else:
-        raise Exception('unknown algorithm: %s' % algorithm)
+        raise Exception('Unknown algorithm: %s' % algorithm)
 
 
 def clientthread(conn, addr):
+    global num_conn
+    print(num_conn)
     c = conn.recv(1).decode('utf-8')
     if (c == 's'):
         # Adding into the dictionary
@@ -194,7 +218,6 @@ def clientthread(conn, addr):
                 conn.sendall(grp_keys[for_grp])
                 print("sent public key")
 
-
             elif code == 'cs':
                 print("in cs")
                 for_user = conn.recv(
@@ -214,21 +237,24 @@ def clientthread(conn, addr):
                 print("in cl")
                 logout_user = conn.recv(
                     int(conn.recv(3).decode('utf-8'))).decode('utf-8')
-                try:
+                try:              
+                    print(user_con[logout_user])
+                    num_conn[eval(user_con[logout_user])] -= 1
+                    print(num_conn)
                     del user_con[logout_user]
-                except:
+                except Exception as e:
                     # this point will never be reached
-                    pass
-            
+                    print(e)
+
             elif code == "ag":
                 print("in ag")
-                grp_name = conn.recv(int(conn.recv(3).decode('utf-8'))).decode('utf-8')
+                grp_name = conn.recv(
+                    int(conn.recv(3).decode('utf-8'))).decode('utf-8')
                 pub_len = conn.recv(4)
                 pub_key = conn.recv(
                     int(pub_len.decode('utf-8')))
-                grp_keys[grp_name]=pub_key
+                grp_keys[grp_name] = pub_key
                 print(grp_name)
-
 
     elif (c == 'c'):
         username = ""
@@ -276,7 +302,8 @@ def clientthread(conn, addr):
                     conn.sendall(bytes("a", 'utf-8'))
                 else:
                     conn.sendall(bytes("y", 'utf-8'))
-                    conn.sendall(str(len(selected_entry[1])).zfill(4).encode('utf-8'))
+                    conn.sendall(
+                        str(len(selected_entry[1])).zfill(4).encode('utf-8'))
                     conn.sendall((selected_entry[1]).encode('utf-8'))
                     verified = conn.recv(1).decode('utf-8')
                     if (verified == "y"):
@@ -287,7 +314,6 @@ def clientthread(conn, addr):
                             str(len(user_keys[username][0])).zfill(4).encode('utf-8'))
                         conn.sendall(user_keys[username][0])
 
-
                         # We dont need to send the private key of the user to him, hence commented out
                         # this part
 
@@ -297,7 +323,7 @@ def clientthread(conn, addr):
                         success = True
 
         # Need to assign the server to it here
-        server_info = select_server(SERVER_POOL, 'round robin')
+        server_info = select_server(SERVER_POOL, 'least connection')
 
         # Maintaining the record of which user is connected to which server
         user_con[username] = str(server_info)
@@ -340,3 +366,5 @@ while True:
     # creates and individual thread for every user
     # that connects
     start_new_thread(clientthread, (conn, addr))
+
+file.close()
